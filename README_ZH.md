@@ -5,7 +5,7 @@
 **给 AI 装个海马体，治好它的健忘症。**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-5.4.0-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
+[![Version](https://img.shields.io/badge/version-5.4.1-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
