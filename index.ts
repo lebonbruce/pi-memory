@@ -13,51 +13,51 @@ const CACHE_DIR = path.join(GLOBAL_MEMORY_DIR, ".cache");
 const CONFIG = {
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
-  maxDistance: 1.2,
-  maxMemories: 500,
-  defaultDecayRate: 0.05,
+  maxDistance: 1.5,                   // 放宽距离，允许更多模糊匹配
+  maxMemories: 100000,                // ⚠️ 绝对拉满：十万条记忆容量
+  defaultDecayRate: 0.001,            // ⚠️ 几乎不衰减：记住每一处细节
   consolidation: {
     minFragmentsForMerge: 2,
-    similarityThreshold: 0.75,
-    autoPromoteAccessCount: 3,
-    fragmentMaxAgeDays: 7,
+    similarityThreshold: 0.8,         // 提高合并门槛，保留更多细微差异
+    autoPromoteAccessCount: 2,        // 更容易晋升为长期记忆
+    fragmentMaxAgeDays: 30,           // 碎片保留更久
   },
   context: {
-    recentProjectDays: 7,
-    staleProjectDays: 30,
-    recentProjectFactor: 0.7,
-    staleProjectFactor: 0.3,
-    alienBreakthroughFactor: 0.8,
+    recentProjectDays: 30,            // ⚠️ 一个月内的项目都算活跃
+    staleProjectDays: 365,            // ⚠️ 一年不碰才算陈旧
+    recentProjectFactor: 0.9,         // 极高权重
+    staleProjectFactor: 0.5,          // 陈旧项目也有较高权重
+    alienBreakthroughFactor: 0.95,    // 极易突破项目隔离
   },
   spreading: {
-    maxHops: 1,
-    minLinkStrength: 0.5,
-    spreadDecay: 0.7,
+    maxHops: 3,                       // ⚠️ 联想深度拉满：3跳（关联的关联的关联）
+    minLinkStrength: 0.3,             // 弱关联也能激活
+    spreadDecay: 0.9,                 // 激活能量衰减极慢
   },
   
-  // V5.7.1 启动唤醒配置 (Startup Recall) - Non-Blocking
+  // V5.7.1 启动唤醒配置 (Startup Recall) - ULTRA MODE (Safe for 32k Context)
   startupRecall: {
-    enabled: true,                    // Enable
-    lookbackHours: 24,                // Lookback window
-    minImportance: 8,                 // Core memory threshold
-    maxTokens: 8000,                  // Hard limit
-    maxMemories: 50,                  // Item limit
-    useLLMSummary: true,              // Use LLM Summary (Async)
-    summaryMaxTokens: 500,            // Summary length
+    enabled: true,
+    lookbackHours: 72,                // 回看过去3天
+    minImportance: 5,                 // 琐事也要回顾
+    maxTokens: 24000,                 // ⚠️ 调整：24k tokens（适配 Qwen2.5/Llama3 等 32k 模型，预留 8k 给输出）
+    maxMemories: 500,                 // ⚠️ 调整：500条（每条平均50字，刚好填满上下文）
+    useLLMSummary: true,
+    summaryMaxTokens: 2000,           // 摘要产出长度
   },
   
-  // V5.7.1 智能检索配置 (RAG with Rerank)
+  // V5.7.1 智能检索配置 (RAG with Rerank) - GOD MODE
   ragSearch: {
-    enabled: true,                    // Enable RAG
-    vectorSearchLimit: 100,           // Top N for vector search
-    rerankWithLLM: true,              // Use LLM Rerank
-    rerankOutputLimit: 10,            // Output limit after rerank
-    hardLimitNoLLM: 20,               // Fallback limit
-    includeGlobalCore: true,          // Include Global Core Memories
-    globalCoreMinImportance: 7,       // Core threshold
-    globalCoreLimit: 5,               // Core limit
-    queryEnhancement: true,           // Enhance short queries
-    queryEnhancementThreshold: 20,    // Threshold for enhancement
+    enabled: true,
+    vectorSearchLimit: 5000,          // ⚠️ 暴力召回：一次捞5000条
+    rerankWithLLM: true,
+    rerankOutputLimit: 200,           // ⚠️ 最终喂给 AI 200条相关记忆
+    hardLimitNoLLM: 300,              // 即使没 LLM 也要喂300条
+    includeGlobalCore: true,
+    globalCoreMinImportance: 4,       // ⚠️ 只要稍微有点用，就是全局规则
+    globalCoreLimit: 200,             // ⚠️ 全局规则上限：200条（满足您的要求）
+    queryEnhancement: true,
+    queryEnhancementThreshold: 5,     // 几乎所有查询都进行增强
   },
   
   // V5.4.1 本地 LLM 分析配置 (Enhanced)
@@ -65,10 +65,11 @@ const CONFIG = {
     enabled: true,                    // Enable local LLM analysis
     provider: 'ollama' as const,      // Currently only supports Ollama
     baseUrl: 'http://localhost:11434',
-    model: 'auto',                    // Auto-detects best available model (e.g., qwen2.5, llama3)
-    timeout: 20000,                   // Timeout (ms) - Increased to 20s for CPU inference/cold boot
+    // 优先尝试 qwen2.5 (速度快/指令遵循好)，其次 llama3，最后才尝试 deepseek-r1 (推理慢)
+    model: 'auto', 
+    timeout: 20000,                   // Timeout (ms)
     fallbackToRegex: true,            // Fall back to regex if LLM is unavailable
-    maxInputLength: 2000,             // Max input length - Increased for better context awareness
+    maxInputLength: 2000,             // Max input length
     
     // Model parameters
     temperature: 0,                   // 0 = deterministic
@@ -325,7 +326,7 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.7.1";
+const STATUS_VERSION = "v5.7.4";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
@@ -374,7 +375,7 @@ async function checkOllamaAvailable(forceRefresh: boolean = false): Promise<bool
           
           if (chatModels.length > 0) {
             // Priority list for Chinese/Coding context
-            const priorities = ['qwen2.5', 'deepseek', 'llama3', 'mistral', 'qwen', 'gemma'];
+            const priorities = ['qwen3', 'qwen2.5', 'deepseek', 'llama3', 'mistral', 'qwen', 'gemma'];
             
             let selected = '';
             for (const p of priorities) {
