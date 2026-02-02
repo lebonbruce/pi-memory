@@ -16,7 +16,7 @@
 
 ## 为什么写这个？
 
-说真的，我用 AI Coding 工具（Cursor、Windsurf、Claude）用了挺久，它们确实强，但有个毛病让我快疯了：**记性像金鱼**。
+说真的，我用 AI Coding 工具（**[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)**）用了挺久，它们确实强，但有个毛病让我快疯了：**记性像金鱼**。
 
 关掉会话？忘了。换个项目？忘了。昨天刚教它的 API 坑点？忘了。
 
