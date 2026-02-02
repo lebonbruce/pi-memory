@@ -5,7 +5,7 @@
 **Give your AI a brain, literally.**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-4.2.3-blue)](https://github.com/lebonbruce/pi-memory/releases)
+[![Version](https://img.shields.io/badge/version-4.2.5-blue)](https://github.com/lebonbruce/pi-memory/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
@@ -44,12 +44,27 @@ Hippocampus uses **"Permeable Recall"**. If a memory is important enough, it pie
 
 ---
 
-## ⚡️ Install (One-Liner)
+## ⚡️ Install
 
-Copy this into your terminal (Mac/Linux/WSL):
+**Choose your OS below.**
 
+### 🍎 Mac / Linux (Bash/Zsh)
 ```bash
-mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ Done! Restart your agent."
+mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && rm -rf pi-hippocampus && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ Done! Restart your agent."
+```
+
+### 🪟 Windows (PowerShell)
+> **Note**: Open "Windows PowerShell" to run this.
+
+```powershell
+$p="$env:USERPROFILE\.pi\agent\extensions"; New-Item -ItemType Directory -Force -Path $p; cd $p; Remove-Item pi-hippocampus -Recurse -Force -ErrorAction SilentlyContinue; git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus; cd pi-hippocampus; npm install; Write-Host "✅ Done! Restart your agent."
+```
+
+### 🪟 Windows (Command Prompt / cmd.exe)
+> **Note**: If you see `C:\Users\Name>`, use this.
+
+```cmd
+cd /d "%USERPROFILE%" && if not exist ".pi\agent\extensions" mkdir ".pi\agent\extensions" && cd ".pi\agent\extensions" && if exist "pi-hippocampus" rmdir /s /q pi-hippocampus && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ Done! Restart your agent."
 ```
 
 ---

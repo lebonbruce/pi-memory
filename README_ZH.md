@@ -5,7 +5,7 @@
 **给 AI 装个海马体，治好它的健忘症。**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-4.2.3-blue)](https://github.com/lebonbruce/pi-memory/releases)
+[![Version](https://img.shields.io/badge/version-4.2.5-blue)](https://github.com/lebonbruce/pi-memory/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
@@ -49,11 +49,25 @@
 
 ## ⚡️ 一键安装
 
-目前这东西只适配 **pi-agent**（因为我可以魔改底层）。
-Mac/Linux/WSL 用户直接复制这一行：
+请根据你的系统选择对应的指令。
 
+### 🍎 Mac / Linux (Bash/Zsh)
 ```bash
-mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ 搞定！重启你的 Agent 试试吧。"
+mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && rm -rf pi-hippocampus && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ 搞定！重启你的 Agent 试试吧。"
+```
+
+### 🪟 Windows (PowerShell)
+> **注意**: 请打开 "Windows PowerShell" 运行（推荐）。
+
+```powershell
+$p="$env:USERPROFILE\.pi\agent\extensions"; New-Item -ItemType Directory -Force -Path $p; cd $p; Remove-Item pi-hippocampus -Recurse -Force -ErrorAction SilentlyContinue; git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus; cd pi-hippocampus; npm install; Write-Host "✅ 搞定！重启你的 Agent 试试吧。"
+```
+
+### 🪟 Windows (CMD / 命令提示符)
+> **注意**: 如果你的界面是 `C:\Users\Name>`，请用这个。
+
+```cmd
+cd /d "%USERPROFILE%" && if not exist ".pi\agent\extensions" mkdir ".pi\agent\extensions" && cd ".pi\agent\extensions" && if exist "pi-hippocampus" rmdir /s /q pi-hippocampus && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ 搞定！重启你的 Agent 试试吧。"
 ```
 
 ---
