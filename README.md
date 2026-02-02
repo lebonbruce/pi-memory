@@ -8,7 +8,7 @@
 [![Version](https://img.shields.io/badge/version-5.7.0-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
+[**English**](README.md) | [**简体中文**](README_ZH.md)
 
 </div>
 
@@ -16,7 +16,7 @@
 
 ## Why I Built This
 
-I've been using AI coding tools (Cursor, Windsurf, Claude) for a while. They're powerful, but there's one thing that drives me crazy: **they have the memory of a goldfish**.
+I've been using AI coding tools (*[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)**) for a while. They're powerful, but there's one thing that drives me crazy: **they have the memory of a goldfish**.
 
 Close the session? Forgotten. Switch projects? Forgotten. That API gotcha I explained yesterday? Forgotten.
 
