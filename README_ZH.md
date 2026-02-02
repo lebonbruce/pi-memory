@@ -192,6 +192,19 @@ ollama serve
 
 如果你想自定义配置，需要直接修改 `index.ts` 中的 `CONFIG` 对象。
 
+### 记忆检索配置
+
+```typescript
+const CONFIG = {
+  maxMemories: 500,                 // 搜索时最多返回多少条记忆（默认 500）
+  maxDistance: 1.2,                 // 向量搜索的最大距离阈值
+  defaultDecayRate: 0.05,           // 记忆衰减速率
+  // ...
+}
+```
+
+> 💡 **提示**：如果你的记忆越来越多，想让 AI 能检索更多相关记忆，可以增加 `maxMemories` 的值。但要注意，太多记忆会占用更多 Token。
+
 ### 本地 LLM 配置
 
 ```typescript

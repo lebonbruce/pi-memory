@@ -14,7 +14,7 @@ const CONFIG = {
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
   maxDistance: 1.2,
-  maxMemories: 10,
+  maxMemories: 500,
   defaultDecayRate: 0.05,
   consolidation: {
     minFragmentsForMerge: 2,
@@ -238,6 +238,16 @@ function ensureDir(dir: string) {
 let ollamaAvailable: boolean | null = null;
 let lastOllamaStatus: boolean | null = null;  // 追踪上次状态，用于检测变化
 let uiContext: any = null;  // 保存 ctx.ui 引用，用于实时通知
+let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
+let lastRecallCount: number = 0;  // 上次召回数量
+
+// 更新底部状态栏（合并显示）
+function updateStatusBar(ctx: any) {
+  const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
+  const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
+  const recallDisplay = lastRecallCount > 0 ? ` | Recall: ${recallText}` : '';
+  ctx.ui.setStatus("hippocampus", `🧠 ${modelDisplay}${recallDisplay}`);
+}
 
 interface LocalLLMAnalysisResult {
   should_save: boolean;
@@ -278,13 +288,14 @@ async function checkAndNotifyOllamaStatus(ctx: any): Promise<boolean> {
   if (lastOllamaStatus !== null && currentStatus !== lastOllamaStatus) {
     if (currentStatus) {
       // 从离线变为在线
-      ctx.ui.notify(`🧠 本地模型已连接: ${CONFIG.localLLM.model}`, "success");
-      ctx.ui.setStatus("llm", `🤖 ${CONFIG.localLLM.model}`);
+      currentLLMMode = CONFIG.localLLM.model;
+      ctx.ui.notify(`🧠 LLM: ${CONFIG.localLLM.model}`, "success");
     } else {
       // 从在线变为离线
-      ctx.ui.notify(`⚠️ 本地模型已断开，切换到正则模式`, "warning");
-      ctx.ui.setStatus("llm", `📝 Regex Mode`);
+      currentLLMMode = 'Regex';
+      ctx.ui.notify(`⚠️ LLM disconnected, using Regex`, "warning");
     }
+    updateStatusBar(ctx);
   }
   
   lastOllamaStatus = currentStatus;
@@ -1457,10 +1468,16 @@ export default function (pi: any) {
       const results = await searchMemoriesInternal(
         params.query, 
         currentProjectId, 
-        params.limit || 10,
+        params.limit || CONFIG.maxMemories,
         targetProjectId,
         false
       );
+      
+      // 更新状态栏
+      if (results.length > 0 && ctx.ui) {
+        lastRecallCount = results.length;
+        updateStatusBar(ctx);
+      }
       
       if (results.length === 0) return { content: [{ type: "text", text: "No relevant memories found." }] };
 
@@ -1662,7 +1679,8 @@ export default function (pi: any) {
         
         const results = await searchMemoriesInternal(prompt, projectId, 5, targetProject, false);
         if (results.length > 0) {
-          ctx.ui.setStatus("memory", `🧠 Recall (${results.length})`);
+          lastRecallCount = results.length;
+          updateStatusBar(ctx);
           contextSection = "\n\n### 🧠 CORTEX RECALL (Auto-retrieved):\n" +
             results.map((m: any) => {
               const typeMark = m.type === 'rule' ? 'RULE' : 'INFO';
@@ -1878,6 +1896,7 @@ Ask yourself:
     sessionBuffer = [];
     ollamaAvailable = null; // 重置检测缓存
     lastOllamaStatus = null; // 重置状态追踪
+    lastRecallCount = 0; // 重置召回计数
     uiContext = ctx; // 保存 UI 引用
     
     // 检测本地 LLM 可用性
@@ -1886,16 +1905,17 @@ Ask yourself:
       lastOllamaStatus = available; // 记录初始状态
       
       if (available) {
-        ctx.ui.notify(`🧠 Hippocampus V5.3 Online (Local LLM: ${CONFIG.localLLM.model})`, "info");
-        ctx.ui.setStatus("llm", `🤖 ${CONFIG.localLLM.model}`);
+        currentLLMMode = CONFIG.localLLM.model;
+        ctx.ui.notify(`🧠 Hippocampus (${CONFIG.localLLM.model})`, "info");
       } else {
-        ctx.ui.notify("🧠 Hippocampus V5.3 Online (Regex Mode - Ollama not detected)", "info");
-        ctx.ui.setStatus("llm", `📝 Regex Mode`);
+        currentLLMMode = 'Regex';
+        ctx.ui.notify("🧠 Hippocampus (Regex)", "info");
       }
     } else {
-      ctx.ui.notify("🧠 Hippocampus V5.3 Online (Regex Mode)", "info");
-      ctx.ui.setStatus("llm", `📝 Regex Mode`);
+      currentLLMMode = 'Regex';
+      ctx.ui.notify("🧠 Hippocampus (Regex)", "info");
     }
+    updateStatusBar(ctx);
   });
 
   // session_shutdown: 自动整理

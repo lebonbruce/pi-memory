@@ -192,6 +192,19 @@ After installation, the AI can use these tools:
 
 To customize, edit the `CONFIG` object in `index.ts`.
 
+### Memory Retrieval Settings
+
+```typescript
+const CONFIG = {
+  maxMemories: 500,                 // Max memories to return per search (default: 500)
+  maxDistance: 1.2,                 // Vector search distance threshold
+  defaultDecayRate: 0.05,           // Memory decay rate
+  // ...
+}
+```
+
+> 💡 **Tip**: As your memory database grows, you can increase `maxMemories` to allow AI to retrieve more relevant memories. Be aware that more memories consume more tokens.
+
 ### Local LLM Settings
 
 ```typescript
