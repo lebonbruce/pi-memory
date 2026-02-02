@@ -40,7 +40,7 @@ const CONFIG = {
     enabled: true,                    // 启用本地 LLM 分析
     provider: 'ollama' as const,      // 目前只支持 ollama
     baseUrl: 'http://localhost:11434',
-    model: 'qwen2.5:7b',              // 推荐：qwen2.5:7b, llama3.1:8b, mistral:7b, phi3:mini
+    model: 'qwen3:8b',                // 推荐：qwen3:8b, qwen2.5:7b, llama3.1:8b, mistral:7b
     timeout: 10000,                   // 超时时间 (ms)
     fallbackToRegex: true,            // 如果本地 LLM 不可用，回退到正则匹配
     maxInputLength: 800,              // 最大输入长度（截断以加速）
@@ -236,6 +236,8 @@ function ensureDir(dir: string) {
 
 // === V5.3 本地 LLM 分析器 (Enhanced) ===
 let ollamaAvailable: boolean | null = null;
+let lastOllamaStatus: boolean | null = null;  // 追踪上次状态，用于检测变化
+let uiContext: any = null;  // 保存 ctx.ui 引用，用于实时通知
 
 interface LocalLLMAnalysisResult {
   should_save: boolean;
@@ -247,9 +249,9 @@ interface LocalLLMAnalysisResult {
   reason: string;
 }
 
-// 检测 Ollama 是否可用
-async function checkOllamaAvailable(): Promise<boolean> {
-  if (ollamaAvailable !== null) return ollamaAvailable;
+// 检测 Ollama 是否可用（实时检测，不缓存）
+async function checkOllamaAvailable(forceRefresh: boolean = false): Promise<boolean> {
+  if (!forceRefresh && ollamaAvailable !== null) return ollamaAvailable;
   
   try {
     const controller = new AbortController();
@@ -266,6 +268,27 @@ async function checkOllamaAvailable(): Promise<boolean> {
     ollamaAvailable = false;
     return false;
   }
+}
+
+// 检测并通知 Ollama 状态变化
+async function checkAndNotifyOllamaStatus(ctx: any): Promise<boolean> {
+  const currentStatus = await checkOllamaAvailable(true);
+  
+  // 检测状态变化
+  if (lastOllamaStatus !== null && currentStatus !== lastOllamaStatus) {
+    if (currentStatus) {
+      // 从离线变为在线
+      ctx.ui.notify(`🧠 本地模型已连接: ${CONFIG.localLLM.model}`, "success");
+      ctx.ui.setStatus("llm", `🤖 ${CONFIG.localLLM.model}`);
+    } else {
+      // 从在线变为离线
+      ctx.ui.notify(`⚠️ 本地模型已断开，切换到正则模式`, "warning");
+      ctx.ui.setStatus("llm", `📝 Regex Mode`);
+    }
+  }
+  
+  lastOllamaStatus = currentStatus;
+  return currentStatus;
 }
 
 // 检测语言
@@ -1639,7 +1662,7 @@ export default function (pi: any) {
         
         const results = await searchMemoriesInternal(prompt, projectId, 5, targetProject, false);
         if (results.length > 0) {
-          ctx.ui.setStatus("memory", `🧠 回忆 (${results.length})`);
+          ctx.ui.setStatus("memory", `🧠 Recall (${results.length})`);
           contextSection = "\n\n### 🧠 CORTEX RECALL (Auto-retrieved):\n" +
             results.map((m: any) => {
               const typeMark = m.type === 'rule' ? 'RULE' : 'INFO';
@@ -1767,6 +1790,11 @@ Ask yourself:
   // turn_end: 捕获 AI 回复，用于自动编码分析
   pi.on("turn_end", async (event: any, ctx: any) => {
     try {
+      // 实时检测 Ollama 状态变化
+      if (CONFIG.localLLM.enabled) {
+        await checkAndNotifyOllamaStatus(ctx);
+      }
+      
       const message = event.message;
       if (message && message.role === 'assistant' && message.content) {
         // 提取文本内容
@@ -1849,17 +1877,24 @@ Ask yourself:
   pi.on("session_start", async (_event: any, ctx: any) => {
     sessionBuffer = [];
     ollamaAvailable = null; // 重置检测缓存
+    lastOllamaStatus = null; // 重置状态追踪
+    uiContext = ctx; // 保存 UI 引用
     
     // 检测本地 LLM 可用性
     if (CONFIG.localLLM.enabled) {
-      const available = await checkOllamaAvailable();
+      const available = await checkOllamaAvailable(true);
+      lastOllamaStatus = available; // 记录初始状态
+      
       if (available) {
         ctx.ui.notify(`🧠 Hippocampus V5.3 Online (Local LLM: ${CONFIG.localLLM.model})`, "info");
+        ctx.ui.setStatus("llm", `🤖 ${CONFIG.localLLM.model}`);
       } else {
         ctx.ui.notify("🧠 Hippocampus V5.3 Online (Regex Mode - Ollama not detected)", "info");
+        ctx.ui.setStatus("llm", `📝 Regex Mode`);
       }
     } else {
       ctx.ui.notify("🧠 Hippocampus V5.3 Online (Regex Mode)", "info");
+      ctx.ui.setStatus("llm", `📝 Regex Mode`);
     }
   });
 
