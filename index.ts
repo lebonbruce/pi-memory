@@ -326,7 +326,7 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.7.5";
+const STATUS_VERSION = "v5.7.6";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
@@ -2454,7 +2454,7 @@ Ask yourself:
     startupMemoriesCache = []; // 清空缓存
     startupSummaryDone = false;
     
-    const VERSION = "v5.7.5";
+    const VERSION = "v5.7.6";
     const projectId = getProjectHash(ctx.cwd);
     currentProjectId = projectId;
     
