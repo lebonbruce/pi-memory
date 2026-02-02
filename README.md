@@ -19,7 +19,7 @@ Let's be real: AI coding agents are amazing, but they have the memory of a goldf
 Every time I close a session or switch projects, it forgets my coding style, my API keys, and that annoying bug I fixed yesterday. I got tired of repeating myself.
 
 So I built **pi-hippocampus**. 
-It's not just a database; it's a **biological memory implant** for `pi-agent`.
+It's not just a database; it's a **biological memory implant** for **[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)**.
 
 ---
 
