@@ -325,12 +325,14 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.6.0";
+const STATUS_VERSION = "v5.7.0";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
   const recallDisplay = lastRecallCount > 0 ? ` | Recall: ${recallText}` : '';
-  ctx.ui.setStatus("hippocampus", `🧠 ${STATUS_VERSION} (${modelDisplay})${recallDisplay}`);
+  // 简化状态显示，避免太长
+  const displayVersion = STATUS_VERSION.replace('v', '');
+  ctx.ui.setStatus("hippocampus", `🧠 ${displayVersion} ${modelDisplay}${recallDisplay}`);
 }
 
 interface LocalLLMAnalysisResult {
@@ -408,20 +410,22 @@ async function checkOllamaAvailable(forceRefresh: boolean = false): Promise<bool
   }
 }
 
-// 检测并通知 Ollama 状态变化
+// 检测并通知 Ollama 状态变化 (v5.7.0: 静默模式，移除 Warning)
 async function checkAndNotifyOllamaStatus(ctx: any): Promise<boolean> {
   const currentStatus = await checkOllamaAvailable(true);
   
   // 检测状态变化
   if (lastOllamaStatus !== null && currentStatus !== lastOllamaStatus) {
     if (currentStatus) {
-      // 从离线变为在线
+      // 从离线变为在线：提示一下（好事可以简单提示）
       currentLLMMode = CONFIG.localLLM.model;
-      ctx.ui.notify(`🧠 LLM: ${CONFIG.localLLM.model}`, "success");
+      // ctx.ui.notify(`🧠 LLM Connected: ${CONFIG.localLLM.model}`, "success");
     } else {
-      // 从在线变为离线
+      // 从在线变为离线：静默降级，不打扰用户
       currentLLMMode = 'Regex';
-      ctx.ui.notify(`⚠️ LLM disconnected, using Regex`, "warning");
+      console.log(`[Hippocampus] LLM disconnected, silently falling back to Regex`);
+      // 移除警告弹窗
+      // ctx.ui.notify(`⚠️ LLM disconnected, using Regex`, "warning");
     }
     updateStatusBar(ctx);
   }
@@ -1509,6 +1513,53 @@ ${memoryList}
   }
 }
 
+// V5.7.0 后台代谢：用 LLM 总结记忆簇
+async function summarizeClusterWithLLM(memories: any[]): Promise<string | null> {
+  if (!CONFIG.localLLM.enabled) return null;
+  const isAvailable = await checkOllamaAvailable();
+  if (!isAvailable) return null;
+
+  try {
+    const memoryList = memories.map(m => `- ${m.content}`).join('\n');
+    const prompt = `你是一个记忆整理专家。请将以下相关的碎片记忆整合成一条完整的、高质量的记忆。
+
+## 记忆碎片
+${memoryList}
+
+## 要求
+1. 提取核心事实、规则或事件
+2. 去除重复和琐碎细节
+3. 生成一条精炼的总结（建议 50-100 字）
+4. 如果包含冲突信息，以最新的为准
+
+## 输出
+直接输出整理后的内容，不要解释。`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.localLLM.timeout);
+    
+    const response = await fetch(`${CONFIG.localLLM.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: CONFIG.localLLM.model,
+        prompt: prompt,
+        stream: false,
+        options: { temperature: 0, num_predict: 200 }
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data.response?.trim() || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // V5.5.0 用本地 LLM 增强查询（理解短消息的真实意图）
 async function enhanceQueryWithLLM(
   userMessage: string,
@@ -1755,10 +1806,18 @@ async function performConsolidation(projectId?: string): Promise<ConsolidationRe
     const contents = cluster.map(c => c.content);
     let mergedContent: string;
     
-    if (contents.length <= 3) {
-      mergedContent = `[Consolidated] ${contents.join(' | ')}`;
+    // V5.7.0: 尝试使用 LLM 进行智能融合 (Metabolism)
+    const llmSummary = await summarizeClusterWithLLM(cluster);
+    
+    if (llmSummary) {
+      mergedContent = `[LLM Consolidated] ${llmSummary}`;
     } else {
-      mergedContent = `[Consolidated from ${contents.length} items] ${contents.sort((a, b) => b.length - a.length)[0]}`;
+      // Fallback: 简单的文本拼接
+      if (contents.length <= 3) {
+        mergedContent = `[Consolidated] ${contents.join(' | ')}`;
+      } else {
+        mergedContent = `[Consolidated from ${contents.length} items] ${contents.sort((a, b) => b.length - a.length)[0]}`;
+      }
     }
     
     const avgImportance = Math.ceil(cluster.reduce((sum, c) => sum + (c.importance || 1), 0) / cluster.length) + 1;
@@ -1768,7 +1827,7 @@ async function performConsolidation(projectId?: string): Promise<ConsolidationRe
       importance: Math.min(avgImportance, 7),
       scope: 'local',
       projectId: cluster[0].project_id,
-      source: 'consolidation'
+      source: 'consolidation_v5.7'
     });
     
     const fragIds = cluster.map(c => c.id);
@@ -2462,11 +2521,13 @@ Ask yourself:
         ctx.ui.notify(`🧠 Hippocampus ${VERSION} (${CONFIG.localLLM.model})`, "info");
       } else {
         currentLLMMode = 'Regex';
-        ctx.ui.notify(`🧠 Hippocampus ${VERSION} (Regex)`, "info");
+        // V5.7.0: 静默启动，不打扰用户
+        console.log(`[Hippocampus] Started in Regex mode (Zero-Config)`);
+        // ctx.ui.notify(`🧠 Hippocampus ${VERSION} (Regex)`, "info");
       }
     } else {
       currentLLMMode = 'Regex';
-      ctx.ui.notify(`🧠 Hippocampus ${VERSION} (Regex)`, "info");
+      // ctx.ui.notify(`🧠 Hippocampus ${VERSION} (Regex)`, "info");
     }
     updateStatusBar(ctx);
     
