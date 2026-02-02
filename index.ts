@@ -284,12 +284,15 @@ async function searchMemories(query: string, projectId: string, limit: number = 
     
     if (!isGlobal && !isLocalContext) {
         // Alien memory (from another project)
-        if (similarity > 0.85 && (row.importance || 0) >= 8) {
-             // "Breakthrough" memory: Highly relevant & Important -> Slight penalty
-             contextFactor = 0.8;
+        if (similarity > 0.80 && (row.importance || 0) >= 5) {
+             // "Breakthrough" memory: Relevant & Important -> Mild penalty
+             contextFactor = 0.7;
+        } else if (similarity > 0.65) {
+             // Moderately relevant alien memory -> Medium penalty
+             contextFactor = 0.4;
         } else {
              // Irrelevant alien memory -> Heavy penalty
-             contextFactor = 0.1; 
+             contextFactor = 0.2; 
         }
     }
 
@@ -304,7 +307,7 @@ async function searchMemories(query: string, projectId: string, limit: number = 
       isAlien: (!isGlobal && !isLocalContext) // Flag for UI
     };
   })
-  .filter((r: any) => r.finalScore > 0.3) // Filter out noise
+  .filter((r: any) => r.finalScore > 0.15) // V4.2: Lowered threshold for better recall
   .sort((a: any, b: any) => b.finalScore - a.finalScore)
   .slice(0, limit);
 
