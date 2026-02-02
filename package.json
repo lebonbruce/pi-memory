@@ -1,6 +1,6 @@
 {
   "name": "pi-hippocampus",
-  "version": "5.7.2",
+  "version": "5.7.3",
   "description": "Pi memory extension with SQLite + sqlite-vec vector search",
   "type": "module",
   "dependencies": {
