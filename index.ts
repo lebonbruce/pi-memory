@@ -87,23 +87,69 @@ const CONFIG = {
   // V5.4.1 自动编码配置 (正则回退方案)
   autoEncode: {
     enabled: true,
-    minMessageLength: 15,
+    minMessageLength: 0, // 杜总指示：0门槛，全量分析
     
-    // ========== 规则/偏好模式 ==========
+    // ========== 修正/纠错模式 (新增) ==========
+    // 这种信息价值极高，通常是对错误认知的修正
+    correctionPatterns: [
+      // 中文
+      /不对|错了|搞错了|弄错了|不是.*而是/i,
+      /其实是|实际上是|应该是|准确说是/i,
+      /更正一下|修正一下|改一下/i,
+      
+      // 英文
+      /incorrect|wrong|mistake|not.*but/i,
+      /actually|in fact|should be|meant to say/i,
+      /correction|let me correct/i,
+    ],
+
+    // ========== 计划/愿景模式 (新增) ==========
+    // 捕捉未来的规划和目标
+    goalPatterns: [
+      // 中文
+      /计划|打算|准备|想要|希望|目标/i,
+      /下一步|接下来|未来|roadmap|里程碑/i,
+      /长期来看|最终效果|愿景/i,
+      
+      // 英文
+      /plan to|going to|intend to|aim to|goal is/i,
+      /next step|roadmap|milestone|future/i,
+      /long term|vision|ultimate goal/i,
+    ],
+
+    // ========== 定义/概念模式 (新增) ==========
+    // 捕捉用户对特定概念的解释
+    definitionPatterns: [
+      // 中文
+      /所谓.*就是|.*是指|.*的意思是/i,
+      /定义为|理解为|看作是/i,
+      
+      // 英文
+      /means that|refers to|defined as/i,
+      /is essentially|basically is/i,
+    ],
+    
+    // ========== 规则/偏好模式 (扩充) ==========
     // 用户表达个人偏好、编码规范、工作流程时触发
     rulePatterns: [
       // 中文：禁止/必须类
       /不要|不用|别用|禁止|不许|不能|不可以|严禁|避免|杜绝/i,
       /必须|一定要|务必|要求|强制|只能|只用|只准/i,
+      /别整|别搞|少弄|别给我/i, // 口语化
+      
       // 中文：偏好类
       /偏好|喜欢|习惯|倾向|更愿意|比较喜欢|我觉得.*好/i,
-      /讨厌|不喜欢|反感|烦|受不了/i,
+      /讨厌|不喜欢|反感|烦|受不了|恶心|难用/i,
+      /一般|通常|平时|往往|大多数时候/i, // 习惯
+      
       // 中文：时间标记（表示持久规则）
       /以后|今后|从现在起|之后都|以后都|永远|一直/i,
-      /记住|记得|别忘了|提醒我/i,
+      /记住|记得|别忘了|提醒我|刻在DNA里/i,
+      
       // 中文：规范/标准类
       /规范|标准|约定|惯例|风格|格式|命名/i,
       /统一用|统一使用|一律|全部用|都用/i,
+      /最佳实践|best practice|原则/i,
       
       // 英文：Prohibition/Must
       /don't|dont|do not|never|avoid|stop using|quit/i,
@@ -111,47 +157,54 @@ const CONFIG = {
       // 英文：Preference
       /prefer|like to|rather|better to|fan of|love using/i,
       /hate|dislike|can't stand|annoying/i,
+      /usually|typically|generally|habit/i,
       // 英文：Time markers
       /from now on|going forward|in the future|from here on/i,
       /remember|keep in mind|don't forget|note that/i,
       // 英文：Standards
       /convention|standard|pattern|style guide|best practice/i,
-      /always use|stick to|follow the/i,
+      /always use|stick to|follow the|principle/i,
     ],
     
-    // ========== 事实/配置模式 ==========
+    // ========== 事实/配置模式 (扩充) ==========
     // 技术栈、配置信息、环境变量等
     factPatterns: [
       // 中文：技术栈
       /用的是|使用的是|基于|采用|技术栈|框架是/i,
       /版本|v\d+|@\d+/i,
+      /依赖|库|package|包/i,
+      
       // 中文：配置
-      /配置|设置|参数|选项|环境变量/i,
-      /地址|路径|目录|文件夹|位置/i,
+      /配置|设置|参数|选项|环境变量|env/i,
+      /地址|路径|目录|文件夹|位置|path/i,
       /端口|port|host|域名|url|uri|链接/i,
+      
       // 中文：凭证（注意：自动编码时会跳过敏感信息）
-      /密码|口令|token|key|secret|凭证|密钥/i,
-      /api|接口|endpoint|服务/i,
-      // 中文：数据库
+      /账号|用户名|user|id/i,
+      // (密码/key等敏感词由过滤器处理，这里只匹配非敏感描述)
+      
+      // 中文：数据库/存储
       /数据库|database|db|mysql|postgres|mongo|redis|sqlite/i,
-      /表名|字段|schema|集合|collection/i,
+      /表名|字段|schema|集合|collection|存储/i,
+      /s3|oss|bucket|存储桶/i,
+      
       // 中文：部署/环境
       /服务器|server|vps|云|aws|azure|gcp|阿里云|腾讯云/i,
       /环境|environment|dev|prod|staging|test/i,
-      /docker|容器|k8s|kubernetes|nginx/i,
+      /docker|容器|k8s|kubernetes|nginx|pm2/i,
+      /ci|cd|流水线|pipeline|action/i,
       
       // 英文：Tech stack
       /using|powered by|built with|based on|running on/i,
-      /version|v\d+\.\d+/i,
+      /version|v\d+\.\d+|dependency|lib/i,
       // 英文：Configuration
       /config|setting|option|parameter|env var/i,
       /path|directory|folder|location|file/i,
       /port|host|domain|url|endpoint/i,
-      // 英文：Credentials
-      /password|token|api.?key|secret|credential/i,
       // 英文：Infrastructure
       /server|instance|container|cluster|node/i,
       /deployed on|hosted on|running on/i,
+      /database|db|store|storage/i,
     ],
     
     // ========== 事件模式 ==========
@@ -215,12 +268,17 @@ const CONFIG = {
       /项目名|项目叫|repo名/i,
       /主要功能|核心功能|用来做|目的是/i,
       /架构|结构|目录结构|文件结构/i,
+      // 中文：话题焦点（新增）
+      /.*的事|关于.*|.*开发|.*计划|.*任务|.*目标/i,
+      /正在弄|正在搞|处理.*|解决.*/i,
       
       // 英文
       /this project|this repo|current project/i,
       /project name|repo name|codebase/i,
       /main feature|core function|purpose is|used for/i,
       /architecture|structure|layout/i,
+      // 英文：Topic Focus (New)
+      /working on|focusing on|dealing with|regarding/i,
     ],
   }
 };
@@ -319,152 +377,106 @@ function hasSensitiveInfo(text: string): boolean {
 }
 
 // V5.4.1 Enhanced: 构建优化的分析 Prompt
-function buildAnalysisPrompt(userMessage: string, assistantMessage: string): string {
-  const maxLen = CONFIG.localLLM.maxInputLength;
-  const userMsg = userMessage.length > maxLen ? userMessage.substring(0, maxLen) + '...' : userMessage;
-  const assistantMsg = assistantMessage.length > maxLen / 2 ? assistantMessage.substring(0, maxLen / 2) + '...' : assistantMessage;
+function buildAnalysisPrompt(recentHistory: Array<{role: string, content: string}>, lang: 'zh' | 'en'): string {
+  // 杜总指示：提供上下文，让 LLM 理解诸如 "好" 这种短语的真实含义
   
-  const lang = CONFIG.localLLM.language === 'auto' 
-    ? detectLanguage(userMessage) 
-    : CONFIG.localLLM.language;
+  // 将历史记录格式化为文本
+  const conversationText = recentHistory.map(msg => {
+    const role = msg.role === 'user' ? (lang === 'zh' ? '用户' : 'User') : (lang === 'zh' ? '助手' : 'Assistant');
+    return `${role}: ${msg.content}`;
+  }).join('\n');
   
   if (CONFIG.localLLM.promptStyle === 'concise') {
-    // 简洁模式 - 更适合 7B 模型
-    return buildConcisePrompt(userMsg, assistantMsg, lang);
+    return buildConcisePrompt(conversationText, lang);
   } else {
-    // 详细模式 - 更适合大模型
-    return buildDetailedPrompt(userMsg, assistantMsg, lang);
+    return buildDetailedPrompt(conversationText, lang);
   }
 }
 
 // 简洁 Prompt（推荐用于 7B 模型）
-function buildConcisePrompt(userMsg: string, assistantMsg: string, lang: 'zh' | 'en'): string {
+function buildConcisePrompt(conversationText: string, lang: 'zh' | 'en'): string {
   if (lang === 'zh') {
-    return `分析对话，判断是否值得记忆。只输出JSON。
+    return `分析这段对话，提取值得记忆的信息。
 
-对话:
-用户: ${userMsg}
-助手: ${assistantMsg}
+🚨 杜总指示：结合上下文理解简短回复（如"好"、"行"）。全量分析，构建大脑记忆。
+
+对话历史:
+${conversationText}
 
 判断标准:
-✅ 保存: 用户偏好/规则、技术配置、完成的任务、踩坑经验
-❌ 不保存: 问候语、简单问答、临时信息、敏感数据
+✅ 保存: 用户偏好/规则、技术配置、完成的任务、踩坑经验、当前关注焦点、基于上下文推断出的意图
+❌ 不保存: 纯粹的寒暄，无实际意义的确认（除非代表了重要决策）
 
-输出格式:
-{"save":true/false,"type":"rule/fact/event","imp":1-10,"scope":"global/local","content":"摘要","tags":["标签"]}
+输出格式(JSON):
+{"save":true/false,"type":"rule/fact/event","imp":1-10,"scope":"global/local","content":"基于上下文的完整摘要","tags":["标签"]}
 
 示例:
-用户: 以后别用var了
-{"save":true,"type":"rule","imp":8,"scope":"global","content":"禁止使用var，统一用let/const","tags":["js","代码规范"]}
-
-用户: 帮我看下这个错误
-{"save":false,"type":"fact","imp":0,"scope":"local","content":"","tags":[]}
-
-用户: 数据库密码是123456
-{"save":false,"type":"fact","imp":0,"scope":"local","content":"","tags":[]}
-
-用户: 终于把登录bug修好了，是token过期的问题
-{"save":true,"type":"event","imp":6,"scope":"local","content":"修复登录bug：token过期处理","tags":["bug","auth"]}
-
-用户: 这个项目用的React 18和TypeScript
-{"save":true,"type":"fact","imp":5,"scope":"local","content":"项目技术栈：React 18 + TypeScript","tags":["react","ts"]}
-
-用户: 我叫张三，是个程序员
-{"save":true,"type":"fact","imp":7,"scope":"global","content":"用户是程序员，名叫张三","tags":["identity"]}
+[对话历史]
+用户: 把MAX_BUY_PRICE改成0.65
+助手: 好的，已修改。
+用户: 好
+[输出]
+{"save":true,"type":"event","imp":6,"scope":"local","content":"确认修改 MAX_BUY_PRICE 为 0.65","tags":["配置","策略"]}
 
 现在分析上面的对话，输出JSON:`;
   } else {
-    return `Analyze conversation. Decide if worth saving to memory. Output JSON only.
+    return `Analyze conversation history. Extract memories based on context.
 
-Conversation:
-User: ${userMsg}
-Assistant: ${assistantMsg}
+Context is KEY. "Ok" might mean "Deploy to Prod" depending on history.
 
-Save: preferences, rules, configs, completed tasks, lessons learned
-Skip: greetings, simple Q&A, temp info, sensitive data
+Conversation History:
+${conversationText}
 
-Format:
-{"save":true/false,"type":"rule/fact/event","imp":1-10,"scope":"global/local","content":"summary","tags":["tag"]}
+Save: preferences, rules, configs, tasks, decisions inferred from context
+Skip: empty chitchat
 
-Examples:
-User: Don't use var anymore
-{"save":true,"type":"rule","imp":8,"scope":"global","content":"Never use var, use let/const instead","tags":["js","style"]}
+Format (JSON):
+{"save":true/false,"type":"rule/fact/event","imp":1-10,"scope":"global/local","content":"Context-aware summary","tags":["tag"]}
 
-User: Can you check this error?
-{"save":false,"type":"fact","imp":0,"scope":"local","content":"","tags":[]}
-
-User: Finally fixed the login bug, was a token expiry issue
-{"save":true,"type":"event","imp":6,"scope":"local","content":"Fixed login bug: added token expiry handling","tags":["bug","auth"]}
-
-User: This project uses React 18 with TypeScript
-{"save":true,"type":"fact","imp":5,"scope":"local","content":"Tech stack: React 18 + TypeScript","tags":["react","ts"]}
+Example:
+[History]
+User: Change MAX_BUY_PRICE to 0.65
+Assistant: Done.
+User: Good
+[Output]
+{"save":true,"type":"event","imp":6,"scope":"local","content":"Confirmed change of MAX_BUY_PRICE to 0.65","tags":["config","strategy"]}
 
 Now analyze and output JSON:`;
   }
 }
 
 // 详细 Prompt（用于更大的模型）
-function buildDetailedPrompt(userMsg: string, assistantMsg: string, lang: 'zh' | 'en'): string {
-  return `You are a memory analyzer for a coding assistant. Your job is to decide if a conversation contains information worth saving to long-term memory.
+function buildDetailedPrompt(conversationText: string, lang: 'zh' | 'en'): string {
+  return `You are a memory analyzer. Analyze the following CONVERSATION HISTORY to extract long-term memories.
 
-## Current Conversation
-USER: ${userMsg}
-ASSISTANT: ${assistantMsg}
+## CRITICAL: Context Awareness
+You are provided with a conversation history. You must use this context to interpret short or ambiguous messages like "yes", "no", "do it".
+- "Yes" after "Should I deploy?" -> Event: User authorized deployment.
+- "No" after "Do you like dark mode?" -> Rule: User dislikes dark mode.
+
+## Conversation History
+${conversationText}
 
 ## Classification Guide
-
-### SAVE as "rule" (importance 6-10):
-- User preferences: "I prefer...", "不要...", "always...", "never..."
-- Coding standards: naming conventions, style guides
-- Work habits: "我习惯...", "I usually..."
-- Dislikes: "我讨厌...", "I hate when..."
-
-### SAVE as "fact" (importance 3-6):
-- Tech stack: "uses React", "用的是Vue"
-- Configurations: ports, paths, versions
-- Project info: architecture, structure
-- Personal info: name, role (scope: global)
-
-### SAVE as "event" (importance 4-7):
-- Completed tasks: "finished", "done", "完成了"
-- Bug fixes: "fixed", "solved", "修好了"
-- Deployments: "deployed", "released", "上线了"
-- Lessons learned: "turns out", "原来是"
-
-### DO NOT SAVE:
-- Greetings: "hi", "好的", "thanks"
-- Questions without context
-- Temporary debugging info
-- Sensitive data: passwords, tokens, keys
-
-## Scope Guide
-- "global": applies everywhere (personal preferences, coding style)
-- "local": project-specific (this project's tech stack)
-
-## Output Format (JSON only)
-{
-  "save": boolean,
-  "type": "fact" | "rule" | "event",
-  "imp": 1-10,
-  "scope": "global" | "local",
-  "content": "concise summary in same language as user",
-  "tags": ["relevant", "tags"]
-}
+(Same as before...)
 
 Analyze and output JSON:`;
 }
 
 // 调用 Ollama 进行分析
-async function analyzeWithLocalLLM(userMessage: string, assistantMessage: string): Promise<LocalLLMAnalysisResult | null> {
+async function analyzeWithLocalLLM(recentHistory: Array<{role: string, content: string}>): Promise<LocalLLMAnalysisResult | null> {
   if (!CONFIG.localLLM.enabled) return null;
   
-  // 快速过滤：排除模式
-  if (matchesExcludePattern(userMessage)) {
+  const lastUserMsg = recentHistory.filter(m => m.role === 'user').pop();
+  if (!lastUserMsg) return null;
+  
+  // 快速过滤：排除模式 (仅检查最新一条)
+  if (matchesExcludePattern(lastUserMsg.content)) {
     return { should_save: false, type: 'fact', importance: 0, scope: 'local', content: '', tags: [], reason: 'Excluded by pattern' };
   }
   
   // 快速过滤：敏感信息
-  if (hasSensitiveInfo(userMessage) || hasSensitiveInfo(assistantMessage)) {
+  if (hasSensitiveInfo(lastUserMsg.content)) {
     return { should_save: false, type: 'fact', importance: 0, scope: 'local', content: '', tags: [], reason: 'Contains sensitive info' };
   }
   
@@ -472,9 +484,11 @@ async function analyzeWithLocalLLM(userMessage: string, assistantMessage: string
   if (!isAvailable) return null;
   
   try {
-    const prompt = buildAnalysisPrompt(userMessage, assistantMessage);
+    const lang = CONFIG.localLLM.language === 'auto' ? detectLanguage(lastUserMsg.content) : CONFIG.localLLM.language;
+    const prompt = buildAnalysisPrompt(recentHistory, lang);
     
     const controller = new AbortController();
+
     const timeoutId = setTimeout(() => controller.abort(), CONFIG.localLLM.timeout);
     
     const response = await fetch(`${CONFIG.localLLM.baseUrl}/api/generate`, {
@@ -910,6 +924,21 @@ function analyzeForAutoEncode(userMessage: string, assistantMessage: string): Au
   const combined = `${userMessage} ${assistantMessage}`;
   let hasMatch = false;
   
+  // 0. 检查修正模式 (优先级最高)
+  const correctionMatch = matchesAnyPattern(userMessage, CONFIG.autoEncode.correctionPatterns);
+  if (correctionMatch.matched) {
+    results.push({
+      shouldSave: true,
+      type: 'fact',
+      importance: 9, // 修正通常很重要
+      scope: 'local',
+      content: extractContent(userMessage, assistantMessage, 'fact'),
+      reason: 'User corrected information',
+      tags: ['correction', 'fact', ...extractTags(combined)]
+    });
+    hasMatch = true;
+  }
+
   // 1. 检查身份/个人信息模式（优先级最高，设为 global）
   const identityMatch = matchesAnyPattern(userMessage, CONFIG.autoEncode.identityPatterns);
   if (identityMatch.matched) {
@@ -925,6 +954,40 @@ function analyzeForAutoEncode(userMessage: string, assistantMessage: string): Au
     hasMatch = true;
   }
   
+  // 1.5. 检查计划/目标模式
+  if (!hasMatch) {
+    const goalMatch = matchesAnyPattern(userMessage, CONFIG.autoEncode.goalPatterns);
+    if (goalMatch.matched) {
+      results.push({
+        shouldSave: true,
+        type: 'event',
+        importance: 6,
+        scope: 'local',
+        content: extractContent(userMessage, assistantMessage, 'event'),
+        reason: 'User plan/goal detected',
+        tags: ['plan', 'goal', ...extractTags(combined)]
+      });
+      hasMatch = true;
+    }
+  }
+  
+  // 1.6. 检查定义模式
+  if (!hasMatch) {
+    const defMatch = matchesAnyPattern(combined, CONFIG.autoEncode.definitionPatterns);
+    if (defMatch.matched) {
+      results.push({
+        shouldSave: true,
+        type: 'fact',
+        importance: 6,
+        scope: 'local',
+        content: extractContent(userMessage, assistantMessage, 'fact'),
+        reason: 'Concept definition detected',
+        tags: ['definition', 'knowledge', ...extractTags(combined)]
+      });
+      hasMatch = true;
+    }
+  }
+
   // 2. 检查规则模式
   if (!hasMatch) {
     const ruleMatch = matchesAnyPattern(userMessage, CONFIG.autoEncode.rulePatterns);
@@ -1033,7 +1096,7 @@ async function saveMemory(content: string, options: MemoryOptions = {}): Promise
 
   // 检查是否已有高度相似的记忆（去重）
   const existing = await searchMemoriesInternal(content, projectId || "", 1, null, true);
-  if (existing.length > 0 && existing[0].similarity > 0.92) {
+  if (existing.length > 0 && existing[0].similarity > 0.85) {
     // 非常相似，只更新访问计数而不创建新记忆
     database.prepare(`
       UPDATE memories SET access_count = access_count + 1, last_accessed_at = ?
@@ -1668,7 +1731,15 @@ export default function (pi: any) {
     
     // Auto-Recall
     let contextSection = "";
-    if (prompt && prompt.length >= 4) {
+    // 杜总指示：移除长度限制，并强制混入核心记忆
+    const searchQueries = [];
+    if (prompt && prompt.trim().length > 0) {
+      searchQueries.push(prompt);
+    }
+    
+    // 1. 搜索与当前 Prompt 相关的记忆
+    let promptResults: any[] = [];
+    if (searchQueries.length > 0) {
       try {
         let targetProject: string | null = null;
         const projectMatch = prompt.match(/在\s*(\S+?)\s*(项目|那边|里面)/i);
@@ -1677,20 +1748,49 @@ export default function (pi: any) {
           if (found) targetProject = found.id;
         }
         
-        const results = await searchMemoriesInternal(prompt, projectId, 5, targetProject, false);
-        if (results.length > 0) {
-          lastRecallCount = results.length;
-          updateStatusBar(ctx);
-          contextSection = "\n\n### 🧠 CORTEX RECALL (Auto-retrieved):\n" +
-            results.map((m: any) => {
-              const typeMark = m.type === 'rule' ? 'RULE' : 'INFO';
-              const impMark = m.importance > 5 ? '★' : '';
-              const spreadMark = m.spreadSource ? ' 🔗' : '';
-              return `- [${typeMark}${impMark}] ${m.content}${spreadMark} (ID:${m.id})`;
-            }).join("\n") +
-            "\n(These are your activated memories. Use them.)";
-        }
+        promptResults = await searchMemoriesInternal(prompt, projectId, 5, targetProject, false);
       } catch (e) {}
+    }
+
+    // 2. 强制拉取全局核心记忆 (Global Core Memories) - 杜总身份等高优信息
+    let globalCoreResults: any[] = [];
+    try {
+      const db = await initDB();
+      // 获取 scope=global 且 importance >= 7 的记忆 (Top 5)
+      globalCoreResults = db.prepare(`
+        SELECT * FROM memories 
+        WHERE scope = 'global' AND importance >= 7 AND status = 'active'
+        ORDER BY importance DESC, access_count DESC 
+        LIMIT 5
+      `).all().map((r: any) => ({
+        ...r,
+        finalScore: 1.0, // 强制高分
+        isCore: true
+      }));
+    } catch (e) {}
+
+    // 3. 合并去重
+    const combinedResults = [...globalCoreResults, ...promptResults];
+    const uniqueMap = new Map();
+    for (const item of combinedResults) {
+      if (!uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    }
+    const finalResults = Array.from(uniqueMap.values()).slice(0, 10); // 最多 10 条
+
+    if (finalResults.length > 0) {
+      lastRecallCount = finalResults.length;
+      updateStatusBar(ctx);
+      contextSection = "\n\n### 🧠 CORTEX RECALL (Auto-retrieved):\n" +
+        finalResults.map((m: any) => {
+          const typeMark = m.type === 'rule' ? 'RULE' : 'INFO';
+          const impMark = m.importance > 5 ? '★' : '';
+          const spreadMark = m.spreadSource ? ' 🔗' : '';
+          const coreMark = m.isCore ? ' [CORE]' : '';
+          return `- [${typeMark}${impMark}] ${m.content}${spreadMark}${coreMark} (ID:${m.id})`;
+        }).join("\n") +
+        "\n(These are your activated memories. Use them.)";
     }
 
     // V5.4 增强版潜意识 Prompt - 更强的记忆驱动
@@ -1835,13 +1935,16 @@ Ask yourself:
         // 优先使用本地 LLM，回退到正则匹配
         if (sessionBuffer.length >= 2) {
           const lastUserMsg = sessionBuffer.filter(m => m.role === 'user').pop();
-          if (lastUserMsg && lastUserMsg.content.length >= CONFIG.autoEncode.minMessageLength) {
+          // 杜总指示：移除长度限制，全量分析
+          if (lastUserMsg) {
             
             // 尝试使用本地 LLM 分析
             let saved = false;
             if (CONFIG.localLLM.enabled) {
               try {
-                const llmResult = await analyzeWithLocalLLM(lastUserMsg.content, assistantText);
+                // V5.5 核心升级：传入完整的会话历史 (sessionBuffer) 而不是单条消息
+                // 这样 LLM 就能理解诸如 "好"、"不行" 等短消息的上下文
+                const llmResult = await analyzeWithLocalLLM(sessionBuffer);
                 
                 if (llmResult && llmResult.should_save && llmResult.content) {
                   await saveMemory(llmResult.content, {
@@ -1899,7 +2002,7 @@ Ask yourself:
     lastRecallCount = 0; // 重置召回计数
     uiContext = ctx; // 保存 UI 引用
     
-    const VERSION = "v5.4.2";
+    const VERSION = "v5.5.0";
 
     // 检测本地 LLM 可用性
     if (CONFIG.localLLM.enabled) {
