@@ -2,10 +2,10 @@
 
 # 🧠 pi-hippocampus
 
-**The Biological Memory Implant for Artificial Intelligence**
+**Give your AI a brain, literally.**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-4.2.2-blue)](https://github.com/lebonbruce/pi-memory/releases)
+[![Version](https://img.shields.io/badge/version-4.2.3-blue)](https://github.com/lebonbruce/pi-memory/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
@@ -14,69 +14,71 @@
 
 ---
 
-> *"I got tired of repeating myself to AI. So I gave it a brain."*
+Let's be real: AI coding agents are amazing, but they have the memory of a goldfish.
 
-Hi, I'm an indie developer who uses AI coding tools daily.
-While tools like Cursor and Windsurf are amazing, they all share one fatal flaw: **Amnesia**.
-Every time I switch projects or restart a session, I have to re-teach the AI my coding style, my API keys, and my architectural decisions. 
+Every time I close a session or switch projects, it forgets my coding style, my API keys, and that annoying bug I fixed yesterday. I got tired of repeating myself.
 
-**I built `pi-hippocampus` to solve my own pain.**
-It transforms `pi-agent` from a stateless tool into a **Partner** that remembers.
+So I built **pi-hippocampus**. 
+It's not just a database; it's a **biological memory implant** for `pi-agent`.
 
 ---
 
-## ✨ The Experience: Why I Built This
+## ✨ Why this is actually good
 
-### 🧘‍♂️ Zero Friction
-I didn't want another tool to manage. I wanted something invisible.
-Once installed, **it just works**. It listens to my conversations in the background and silently encodes wisdom. I don't have to "save" anything manually. It feels like the agent finally *started paying attention*.
+### 1. It's Invisible (Zero Friction)
+You don't need to learn new commands.
+Just chat naturally. The extension listens in the background. When you say something important (like "Always use Python 3.10"), it catches it, encodes it, and saves it.
+It just works.
 
-### 🧠 The End of "Amnesia"
-I hated saying *"I told you this yesterday!"*.
-Now, my local database is my **Second Brain**.
-- It remembers my coding preferences (e.g., "I hate semi-colons") forever.
-- It recalls bug fixes from 3 months ago when I hit a similar issue today.
-- It feels **personal**.
+### 2. It Dreams (Consolidation) 💤
+This is the killer feature.
+Just like humans sleep to organize memories, this plugin runs a **Consolidation Process** in the background.
+- It scans your recent fragmented conversations.
+- It summarizes them into solid Rules.
+- **Best part:** It does this locally using logic and vector math. **It costs ZERO LLM tokens.** Your database gets smarter and cleaner for free.
 
-### 🔮 Intuition (My Favorite Feature)
-I realized that knowledge shouldn't be siloed.
-If I solved a hard bug in `Project A`, I want that knowledge available when I'm working on `Project B`.
-I built a **"Permeable Recall"** system that allows high-importance memories to pierce through project boundaries. It feels like **Intuition**.
+### 3. Cross-Project Intuition
+Most agents keep memory siloed per project.
+But if I fixed a specific `CORS` error in Project A, I want that knowledge when I hit the same error in Project B.
+Hippocampus uses **"Permeable Recall"**. If a memory is important enough, it pierces through the project boundary. It feels like your agent actually has intuition.
 
 ---
 
-## ⚡️ Installation
+## ⚡️ Install (One-Liner)
 
-### One-Liner Implant (Mac/Linux/WSL)
+Copy this into your terminal (Mac/Linux/WSL):
 
 ```bash
-mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ Hippocampus Implanted!"
+mkdir -p ~/.pi/agent/extensions && cd ~/.pi/agent/extensions && git clone https://github.com/lebonbruce/pi-memory.git pi-hippocampus && cd pi-hippocampus && npm install && echo "✅ Done! Restart your agent."
 ```
 
-*Restart your agent after installation.*
+---
+
+## 🧩 How it works (No Math, just Logic)
+
+I won't bore you with complex formulas. Here is the gist:
+
+Your memories live in a high-dimensional vector space (`~/.pi-memory/`).
+
+1.  **Bio-Mimetic Tags**: Every memory is tagged as a **Fact**, **Rule**, or **Event**. Rules are sticky; Events fade away over time (unless you recall them often).
+2.  **Survival of the Fittest**: Memories compete for attention.
+    - Important stuff (High weights) stays.
+    - Trivial chatter follows the **Ebbinghaus Forgetting Curve** and disappears.
+3.  **Synaptic Links**: If you mention "Login" and "Database" together often, the system physically links these memories. Recalling one pulls up the other.
 
 ---
 
-## 🧩 How It Works
+## 🤝 Wrap up
 
-I designed a bio-mimetic algorithm that mimics the human brain's **Hippocampus**:
+I'm just an indie dev sharing a tool that solved a huge pain for me.
+It's local, private, and free.
 
-- **Facts vs Rules**: It knows the difference between a static fact and a behavior-shaping rule.
-- **Natural Decay**: It implements the *Ebbinghaus Forgetting Curve*. Trivial details fade; core principles stick.
-- **Privacy**: All data lives in `~/.pi-memory/memories.db` on your machine. **No cloud. No subscriptions.**
+If you find a bug or have an idea, drop it in the Issues.
 
-$$ Score = Similarity \times (1 + \log(Access)) \times Importance \times Decay \times ContextPenalty $$
-
----
-
-## 🤝 Let's Connect
-
-I'm exploring how to bring this memory architecture to other tools (like Cursor or VSCode). If you are interested in this "Memory-First" AI approach, let's chat!
-
-> **📩 Reach out:** [GitHub Issues](https://github.com/lebonbruce/pi-memory/issues)
+> **GitHub Issues**: [Click here](https://github.com/lebonbruce/pi-memory/issues)
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ by an indie dev for the community.</sub>
+  <sub>Built with ❤️ by a dev for devs.</sub>
 </div>
