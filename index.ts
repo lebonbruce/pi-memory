@@ -2445,7 +2445,7 @@ Ask yourself:
                 const llmResult = await analyzeWithLocalLLM(sessionBuffer);
                 
                 if (llmResult && llmResult.should_save && llmResult.content) {
-                  await saveMemory(llmResult.content, {
+                  const newId = await saveMemory(llmResult.content, {
                     type: llmResult.type,
                     importance: llmResult.importance,
                     scope: llmResult.scope,
@@ -2454,6 +2454,22 @@ Ask yourself:
                     source: 'local_llm'
                   });
                   saved = true;
+
+                  // V5.7.0 实时记忆代谢：每次生成重要记忆后，立即检查并清理过时记忆
+                  // 只对规则和高权重事实进行检查，避免过度消耗资源
+                  if (llmResult.type === 'rule' || llmResult.importance >= 7) {
+                    setTimeout(async () => {
+                      try {
+                        const metabolizedIds = await resolveMemoryConflicts(newId, llmResult.content, currentProjectId);
+                        if (metabolizedIds.length > 0) {
+                          console.log(`[Metabolism] Resolved ${metabolizedIds.length} conflicts for memory ${newId}`);
+                        }
+                      } catch (e) {
+                         // 静默失败，不打扰主流程
+                      }
+                    }, 0);
+                  }
+
                 } else if (llmResult && !llmResult.should_save) {
                   // 本地 LLM 明确说不需要保存
                   saved = true; // 跳过正则分析
