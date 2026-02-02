@@ -63,23 +63,6 @@
 
 ---
 
-## 🚀 V5.3 新特性：本地 LLM 智能分析
-
-### 用本地模型判断是否需要记忆
-
-如果你有 Ollama，插件会用本地 7B 模型来分析每轮对话：
-- 这句话值得记住吗？
-- 应该记成什么类型（规则/事实/事件）？
-- 重要性多高？
-
-**比正则匹配聪明多了，而且完全免费。**
-
-### 无感回退
-
-没有 Ollama？没关系，自动回退到正则匹配模式，完全不影响使用。
-
----
-
 ## ⚡️ 一键安装
 
 ### 🍎 Mac / Linux
@@ -166,7 +149,7 @@ ollama serve
 
 重启 pi，如果看到这个提示就说明成功了：
 ```
-🧠 Hippocampus V5.3 Online (Local LLM: qwen2.5:7b)
+🧠 Hippocampus V5.3 Online (Local LLM: qwen3:8b)
 ```
 
 如果看到 `Regex Mode`，说明 Ollama 没检测到，但插件仍然可以正常工作。
@@ -210,13 +193,20 @@ const CONFIG = {
 ```typescript
 localLLM: {
   enabled: true,                    // 启用/禁用本地 LLM
+  provider: 'ollama',               // 目前支持 'ollama'
   baseUrl: 'http://localhost:11434',// Ollama 地址
-  model: 'qwen2.5:7b',              // 模型名称
+  model: 'qwen3:8b',                // 模型名称
   timeout: 10000,                   // 超时时间 (ms)
   fallbackToRegex: true,            // 不可用时回退到正则
+  maxInputLength: 800,              // 用于分析的最大输入长度
   
   temperature: 0,                   // 0 = 确定性输出
+  maxTokens: 256,                   // 限制输出长度
   minImportanceToSave: 3,           // 重要性低于此值不保存
+  
+  preferUserContent: true,          // true = 保存用户原文
+  maxContentLength: 200,            // 摘要最大长度
+  
   promptStyle: 'concise',           // 'concise' 适合 7B, 'detailed' 适合大模型
   language: 'auto',                 // 'auto' | 'zh' | 'en'
 }
@@ -226,10 +216,10 @@ localLLM: {
 
 | 模型 | VRAM | 速度 | 中文 | 推荐场景 |
 |------|------|------|------|----------|
-| `qwen2.5:7b` | ~5GB | ⚡⚡ | ✅ 优秀 | **默认推荐** |
+| `qwen3:8b` | ~6GB | ⚡⚡ | ✅ 极佳 | **最新默认推荐** |
+| `qwen2.5:7b` | ~5GB | ⚡⚡ | ✅ 优秀 | 备选方案 |
 | `qwen2.5:3b` | ~2GB | ⚡⚡⚡ | ✅ 不错 | 低配机器 |
 | `llama3.1:8b` | ~5GB | ⚡⚡ | ⚠️ 一般 | 英文场景 |
-| `phi3:mini` | ~2GB | ⚡⚡⚡ | ⚠️ 一般 | 极速但精度低 |
 
 ---
 
@@ -281,7 +271,7 @@ localLLM: {
 
 ```
 ~/.pi-hippocampus/
-├── memories.db      # SQLite 数据库（记忆 + 向量）
+├── hippocampus.db   # SQLite 数据库（记忆 + 向量）
 └── .cache/          # Embedding 模型缓存
 ```
 
@@ -317,7 +307,7 @@ localLLM: {
 
 ### Q: 如何清空所有记忆？
 
-删除 `~/.pi-hippocampus/memories.db` 文件，重启 pi。
+删除 `~/.pi-hippocampus/hippocampus.db` 文件，重启 pi。
 
 ---
 

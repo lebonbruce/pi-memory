@@ -37,33 +37,33 @@ const CONFIG = {
   
   // V5.3 本地 LLM 分析配置 (Enhanced)
   localLLM: {
-    enabled: true,                    // 启用本地 LLM 分析
-    provider: 'ollama' as const,      // 目前只支持 ollama
+    enabled: true,                    // Enable local LLM analysis
+    provider: 'ollama' as const,      // Currently only supports Ollama
     baseUrl: 'http://localhost:11434',
-    model: 'qwen3:8b',                // 推荐：qwen3:8b, qwen2.5:7b, llama3.1:8b, mistral:7b
-    timeout: 10000,                   // 超时时间 (ms)
-    fallbackToRegex: true,            // 如果本地 LLM 不可用，回退到正则匹配
-    maxInputLength: 800,              // 最大输入长度（截断以加速）
+    model: 'qwen3:8b',                // Fill in your Ollama model name here (e.g., 'qwen3:8b', 'qwen2.5:7b', 'llama3.1:8b')
+    timeout: 10000,                   // Timeout (ms)
+    fallbackToRegex: true,            // Fall back to regex if LLM is unavailable
+    maxInputLength: 800,              // Max input length for speed
     
-    // 模型参数
-    temperature: 0,                   // 0 = 确定性输出
-    maxTokens: 256,                   // 限制输出长度
+    // Model parameters
+    temperature: 0,                   // 0 = deterministic
+    maxTokens: 256,                   // Limit output length
     
-    // 分析阈值
-    minImportanceToSave: 3,           // 重要性低于此值不保存
-    confidenceThreshold: 0.7,         // LLM 置信度阈值（预留）
+    // Thresholds
+    minImportanceToSave: 3,           // Skip if importance is below this
+    confidenceThreshold: 0.7,         // LLM confidence threshold (reserved)
     
-    // 输出控制
-    preferUserContent: true,          // true=保存用户原文, false=保存LLM生成的摘要
-    maxContentLength: 200,            // 保存内容的最大长度
+    // Output control
+    preferUserContent: true,          // true = save original user text, false = save LLM summary
+    maxContentLength: 200,            // Max content length
     
-    // 排除规则
+    // Exclude rules
     excludePatterns: [
       /^(好的|ok|嗯|哦|谢谢|thanks|thank you|got it|understood|明白|收到)[\s,!.。！]*/i,
       /^(帮我|请|help me|can you|could you)/i,
     ],
     
-    // 敏感信息过滤（增强）
+    // Sensitive information filtering
     sensitivePatterns: [
       /password\s*[:=]/i,
       /密码\s*[:=：]/i,
@@ -79,9 +79,9 @@ const CONFIG = {
       /xox[baprs]-[a-zA-Z0-9-]+/i,    // Slack token
     ],
     
-    // Prompt 模板配置
-    promptStyle: 'concise' as 'concise' | 'detailed',  // 简洁模式更适合小模型
-    language: 'auto' as 'auto' | 'zh' | 'en',          // 输出语言
+    // Prompt template config
+    promptStyle: 'concise' as 'concise' | 'detailed',  // Concise is better for small models
+    language: 'auto' as 'auto' | 'zh' | 'en',          // Output language
   },
   
   // V5.2 自动编码配置 (正则回退方案)

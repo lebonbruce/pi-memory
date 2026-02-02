@@ -63,23 +63,6 @@ Feels less like database queries, more like AI having intuition.
 
 ---
 
-## 🚀 V5.3: Local LLM Analysis
-
-### Use Local Models to Decide What to Remember
-
-If you have Ollama, the plugin uses a local 7B model to analyze each conversation:
-- Is this worth remembering?
-- What type? (rule/fact/event)
-- How important?
-
-**Way smarter than regex, and completely free.**
-
-### Graceful Fallback
-
-No Ollama? No problem. Automatically falls back to regex matching. Everything still works.
-
----
-
 ## ⚡️ Quick Install
 
 ### 🍎 Mac / Linux
@@ -166,7 +149,7 @@ ollama serve
 
 Restart pi. If you see this, you're good:
 ```
-🧠 Hippocampus V5.3 Online (Local LLM: qwen2.5:7b)
+🧠 Hippocampus V5.3 Online (Local LLM: qwen3:8b)
 ```
 
 If you see `Regex Mode`, Ollama wasn't detected—but the plugin still works.
@@ -210,14 +193,21 @@ const CONFIG = {
 ```typescript
 localLLM: {
   enabled: true,                    // Enable/disable local LLM
+  provider: 'ollama',               // Currently supports 'ollama'
   baseUrl: 'http://localhost:11434',// Ollama endpoint
-  model: 'qwen2.5:7b',              // Model name
+  model: 'qwen3:8b',                // Model name
   timeout: 10000,                   // Timeout in ms
   fallbackToRegex: true,            // Fall back if unavailable
+  maxInputLength: 800,              // Max input chars for analysis
   
   temperature: 0,                   // 0 = deterministic
+  maxTokens: 256,                   // Limit output length
   minImportanceToSave: 3,           // Skip low-importance items
-  promptStyle: 'concise',           // 'concise' for 7B, 'detailed' for larger
+  
+  preferUserContent: true,          // true = save original user text
+  maxContentLength: 200,            // Max summary length
+  
+  promptStyle: 'concise',           // 'concise' or 'detailed'
   language: 'auto',                 // 'auto' | 'zh' | 'en'
 }
 ```
@@ -226,10 +216,10 @@ localLLM: {
 
 | Model | VRAM | Speed | Notes |
 |-------|------|-------|-------|
-| `qwen2.5:7b` | ~5GB | ⚡⚡ | **Default. Great all-around.** |
+| `qwen3:8b` | ~6GB | ⚡⚡ | **Latest Default. Excellent.** |
+| `qwen2.5:7b` | ~5GB | ⚡⚡ | Great alternative |
 | `qwen2.5:3b` | ~2GB | ⚡⚡⚡ | For low-spec machines |
 | `llama3.1:8b` | ~5GB | ⚡⚡ | Better for English-only |
-| `phi3:mini` | ~2GB | ⚡⚡⚡ | Fast but less accurate |
 
 ---
 
@@ -281,7 +271,7 @@ Everything stays local:
 
 ```
 ~/.pi-hippocampus/
-├── memories.db      # SQLite database (memories + vectors)
+├── hippocampus.db   # SQLite database (memories + vectors)
 └── .cache/          # Embedding model cache
 ```
 
@@ -317,7 +307,7 @@ Ask the AI to call `memory_status`.
 
 ### Q: How to reset everything?
 
-Delete `~/.pi-hippocampus/memories.db` and restart pi.
+Delete `~/.pi-hippocampus/hippocampus.db` and restart pi.
 
 ---
 
