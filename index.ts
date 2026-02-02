@@ -636,12 +636,20 @@ function closeDB() {
   }
 }
 
-async function getEmbedding(text: string): Promise<Float32Array> {
+async function getEmbedding(text: string, type: 'query' | 'document' = 'document'): Promise<Float32Array> {
   await loadDependencies();
   if (!embeddingPipeline) {
     embeddingPipeline = await pipeline("feature-extraction", CONFIG.embeddingModel);
   }
-  const output = await embeddingPipeline(text, { pooling: "mean", normalize: true });
+  
+  let inputText = text;
+  if (CONFIG.embeddingModel.includes("nomic")) {
+    if (!text.startsWith("search_query:") && !text.startsWith("search_document:")) {
+      inputText = type === 'query' ? `search_query: ${text}` : `search_document: ${text}`;
+    }
+  }
+
+  const output = await embeddingPipeline(inputText, { pooling: "mean", normalize: true });
   return new Float32Array(output.data);
 }
 
@@ -1013,7 +1021,7 @@ async function saveMemory(content: string, options: MemoryOptions = {}): Promise
     `).run(id, now, options.parentId);
   }
 
-  const embedding = await getEmbedding(content);
+  const embedding = await getEmbedding(content, 'document');
   const embeddingBuffer = Buffer.from(embedding.buffer);
 
   database.prepare(`
@@ -1039,10 +1047,18 @@ async function saveMemory(content: string, options: MemoryOptions = {}): Promise
       for (const mem of similar) {
         if (mem.id !== id && mem.similarity > 0.7) {
           const strength = Math.min(1.0, mem.similarity * 0.8);
+          
+          // Link New -> Old
           database.prepare(`
             INSERT OR IGNORE INTO memory_links (source_id, target_id, type, strength, created_at)
             VALUES (?, ?, 'auto_association', ?, ?)
           `).run(id, mem.id, strength, now);
+
+          // Link Old -> New (Bidirectional)
+          database.prepare(`
+            INSERT OR IGNORE INTO memory_links (source_id, target_id, type, strength, created_at)
+            VALUES (?, ?, 'auto_association', ?, ?)
+          `).run(mem.id, id, strength, now);
         }
       }
     } catch(e) {}
@@ -1060,7 +1076,7 @@ async function searchMemoriesInternal(
   disableSpread: boolean = false
 ) {
   const database = await initDB();
-  const queryEmbedding = await getEmbedding(query);
+  const queryEmbedding = await getEmbedding(query, 'query');
   const queryBuffer = Buffer.from(queryEmbedding.buffer);
   const now = Date.now();
 
@@ -1245,7 +1261,7 @@ async function performConsolidation(projectId?: string): Promise<ConsolidationRe
   
   const embeddings: Map<string, Float32Array> = new Map();
   for (const frag of fragments) {
-    const embedding = await getEmbedding(frag.content);
+    const embedding = await getEmbedding(frag.content, 'document');
     embeddings.set(frag.id, embedding);
   }
   
@@ -1410,6 +1426,8 @@ export default function (pi: any) {
         const found = await findProjectByName(params.project);
         if (found) {
           targetProjectId = found.id;
+        } else {
+          return { content: [{ type: "text", text: `⚠️ Project '${params.project}' not found. Please check the name using 'list_projects'.` }] };
         }
       }
       
@@ -1514,6 +1532,9 @@ export default function (pi: any) {
     description: "查看记忆系统状态：本地 LLM 可用性、记忆统计、配置信息。",
     parameters: Type.Object({}),
     async execute(id: string, params: any, signal: any, onUpdate: any, ctx: any) {
+      // Force refresh Ollama status
+      ollamaAvailable = null;
+
       const database = await initDB();
       const projectId = getProjectHash(ctx.cwd);
       

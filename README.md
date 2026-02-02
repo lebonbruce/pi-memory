@@ -43,7 +43,7 @@ Just chat normally. When you say "don't use var anymore" or "the database passwo
 - **Memory Types**: Distinguishes Facts, Rules, and Events
 - **Forgetting Curve**: Unimportant stuff naturally fades over time
 - **Gets Stronger with Use**: Frequently recalled memories gain weight (LTP)
-- **Associative Recall**: Searches spread along connection links to find related memories
+- **Associative Recall**: Searches spread along connection links to find related memories (Bidirectional)
 
 ### 💤 Sleep Consolidation (It Actually Tidies Up)
 
