@@ -382,7 +382,7 @@ export default function (pi: any) {
         });
         
         return { 
-            content: [{ type: "text", text: `✓ 记忆已固化 (ID: ${memId})\nType: ${params.type||'fact'} | Importance: ${params.importance||1}` }], 
+            content: [{ type: "text", text: `✓ Memory solidified (ID: ${memId})\nType: ${params.type||'fact'} | Importance: ${params.importance||1}` }], 
             details: { id: memId } 
         };
       } catch (error: any) {
@@ -403,7 +403,7 @@ export default function (pi: any) {
       const projectId = getProjectHash(ctx.cwd);
       const results = await searchMemories(params.query, projectId, params.limit || 10);
       
-      if (results.length === 0) return { content: [{ type: "text", text: "没有唤起相关记忆。" }] };
+      if (results.length === 0) return { content: [{ type: "text", text: "No relevant memories found." }] };
 
       const topResults = results.slice(0, 3);
       const text = topResults.map((r: any) => {
@@ -414,8 +414,8 @@ export default function (pi: any) {
         return `[${r.id}] ${icon}${typeIcon} (Act:${score}%) ${r.content}`;
       }).join("\n");
 
-      let summary = `🧠 脑海浮现了 ${results.length} 条记忆`;
-      if (results.length > 3) summary += ` (展示前 3 条)`;
+      let summary = `🧠 Recalled ${results.length} memories`;
+      if (results.length > 3) summary += ` (showing top 3)`;
       summary += `:\n${text}`;
 
       return { content: [{ type: "text", text: summary }], details: { results } };
@@ -438,7 +438,7 @@ export default function (pi: any) {
         INSERT OR REPLACE INTO memory_links (source_id, target_id, type, strength, created_at)
         VALUES (?, ?, ?, ?, ?)
       `).run(params.source_id, params.target_id, params.relationship, params.strength || 1.0, Date.now());
-      return { content: [{ type: "text", text: `✓ 已建立神经连接: ${params.source_id} <--> ${params.target_id}` }] };
+      return { content: [{ type: "text", text: `✓ Synapse established: ${params.source_id} <--> ${params.target_id}` }] };
     }
   });
 
@@ -450,11 +450,11 @@ export default function (pi: any) {
     async execute(id: string, params: any, signal: any, onUpdate: any, ctx: any) {
       const projectId = getProjectHash(ctx.cwd);
       const items = await consolidateMemories(projectId);
-      if (items.length === 0) return { content: [{ type: "text", text: "记忆很整洁，无需整理。" }] };
+      if (items.length === 0) return { content: [{ type: "text", text: "Memory is clean. No fragments to consolidate." }] };
       
       const list = items.map((i: any) => `- [${i.id}] ${i.content}`).join("\n");
       return { 
-          content: [{ type: "text", text: `发现 ${items.length} 条碎片记忆。请分析并提炼为 Global/Local Rules，然后归档旧的：\n${list}` }] 
+          content: [{ type: "text", text: `Found ${items.length} memory fragments. Please analyze and consolidate into Global/Local Rules, then archive the fragments:\n${list}` }] 
       };
     }
   });
@@ -485,24 +485,24 @@ export default function (pi: any) {
     // 2. Subconscious Protocol V4 (Bio-mimetic)
     const subconscious = `
 ### 🧠 MEMORY PROTOCOL V4.0 (Bio-mimetic)
-你是“海马体”记忆系统的拥有者。
-当前项目 ID: ${projectId}
+You are the owner of a "Hippocampus" memory system.
+Current Project: ${projectId}
 
-**你的职责:**
-1. **编码现实 (Encode Reality)**: 精准调用 \`save_memory\`。
-   - **Facts (事实)**: "项目使用 React v18" -> type:'fact', importance:3
-   - **Events (经历)**: "用户刚刚部署了生产环境" -> type:'event', importance:5
-   - **Rules (规则)**: "必须使用类型安全的 SQL" -> type:'rule', importance:10 (关键!)
-2. **强化 (Reinforce)**: 如果你使用了被检索出的记忆，它会变强 (LTP 机制)。
-3. **演化 (Evolve)**: 如果规则发生变化，使用 \`previous_memory_id\` 归档旧的突触。
-4. **连接 (Connect)**: 如果两条记忆相关，使用 \`connect_memories\` 建立连接。
+**YOUR DUTY:**
+1. **Encode Reality**: precise \`save_memory\` calls.
+   - **Facts**: "Project uses React v18" -> type:'fact', importance:3
+   - **Events**: "User deployed to prod" -> type:'event', importance:5
+   - **Rules**: "Always use type-safe SQL" -> type:'rule', importance:10 (CRITICAL!)
+2. **Reinforce**: If you use a retrieved memory, it gets stronger (LTP).
+3. **Evolve**: If a rule changes, use \`previous_memory_id\` to archive the old synapse.
+4. **Connect**: If two memories are related, use \`connect_memories\`.
 
-**主动总结 (ACTIVE SUMMARIZATION):**
-不要等待用户指令。如果对话中揭示了新的见解、偏好或项目状态，**立即**将其存入记忆。
-- 示例: 用户说 "我喜欢短函数。" -> 存! (type:'rule', scope:'global')
-- 示例: 用户解释了一个 Bug 修复。 -> 存! (type:'event', scope:'local')
+**ACTIVE SUMMARIZATION:**
+Don't wait for user orders. If a conversation segment reveals new insights, preferences, or project states, **IMMEDIATELY** save them to memory. 
+- Example: User says "I prefer short functions." -> SAVE IT! (type:'rule', scope:'global')
+- Example: User explains a bug fix. -> SAVE IT! (type:'event', scope:'local')
 
-**静默执行**: 执行记忆操作时保持安静。成功后只需确认 "✓"。
+**Silence**: Execute memory operations silently. Confirm with "✓".
 `;
 
     return {
@@ -511,7 +511,7 @@ export default function (pi: any) {
   });
 
   pi.on("session_start", async (_event: any, ctx: any) => {
-    ctx.ui.notify("🧠 海马体记忆引擎已启动 (神经排序™ 激活)", "info");
+    ctx.ui.notify("🧠 Hippocampus Memory Engine Online (Neuro-Ranking™ Active)", "info");
   });
 
   pi.on("session_shutdown", async () => closeDB());
