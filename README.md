@@ -5,10 +5,10 @@
 **Give your AI a hippocampus. Cure its amnesia.**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-5.7.0-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
+[![Version](https://img.shields.io/badge/version-5.7.1-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**English**](README.md) | [**简体中文**](README_ZH.md)
+[**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
 
 </div>
 
@@ -16,7 +16,7 @@
 
 ## Why I Built This
 
-I've been using AI coding tools (**[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)**) for a while. They're powerful, but there's one thing that drives me crazy: **they have the memory of a goldfish**.
+I've been using AI coding tools (Cursor, Windsurf, Claude) for a while. They're powerful, but there's one thing that drives me crazy: **they have the memory of a goldfish**.
 
 Close the session? Forgotten. Switch projects? Forgotten. That API gotcha I explained yesterday? Forgotten.
 
@@ -61,30 +61,20 @@ Because it doesn't just search the current project. It looks at semantic similar
 
 Feels less like database queries, more like AI having intuition.
 
-### 🌅 V5.6.0: Startup Recall & Smart RAG
+### 🌅 V5.7.1: Startup Recall & Smart RAG (NEW!)
 
 **Startup Recall** - When you open a new session, the AI now automatically loads:
 - **Core memories** (importance ≥ 8): Your identity, rules, preferences
 - **Recent memories** (last 24 hours): What you were working on yesterday
 
-**Smart RAG** - Vector search retrieves Top 100, then Local LLM reranks to the best 10.
+With local Ollama, it even generates a "morning briefing" summary!
 
-### 🧬 V5.7.0: Memory Metabolism (Real-time Evolution)
+**Smart RAG with Rerank** - When you ask a question:
+1. Vector search retrieves Top 100 relevant memories
+2. Local LLM picks the most relevant 10 (if Ollama is available)
+3. Falls back to Top 20 if no local LLM
 
-**Your brain doesn't just "add" memories; it updates them.**
-
-- **Real-time Conflict Resolution**: When a new rule is learned (e.g., "Use strict mode"), the system instantly checks for conflicting old rules in the background.
-- **Auto-Deprecation**: Old, conflicting memories are marked as `outdated` and soft-deleted.
-- **Synaptic Evolution**: Links are built between the new and old, creating a history of *why* things changed.
-- **Zero Latency**: Happens asynchronously in the background. You won't feel a thing.
-
-### 🤫 Zero-Config & Silent Mode
-
-**Invisible is the best UX.**
-
-- **Silent Fallback**: No annoying "Ollama disconnected" toasts. It just quietly switches to Regex mode.
-- **Auto-Detection**: It knows when you start Ollama and upgrades itself instantly.
-- **Deep Clean**: The `consolidate_memories` tool now auto-detects your intent to perform a full database deep-clean using local LLM.
+**Fully Configurable** - All thresholds are adjustable for users with/without Ollama.
 
 ---
 
@@ -168,7 +158,7 @@ ollama serve
 
 Restart pi. If you see this, you're good:
 ```
-🧠 Hippocampus v5.7.0 (qwen2.5:7b)
+🧠 Hippocampus V5.7.1 Online (Local LLM: qwen2.5:7b)
 ```
 
 If you see `Regex Mode`, Ollama wasn't detected—but the plugin still works.
@@ -207,7 +197,7 @@ const CONFIG = {
 
 > 💡 **Tip**: As your memory database grows, you can increase `maxMemories` to allow AI to retrieve more relevant memories. Be aware that more memories consume more tokens.
 
-### V5.6.0 Startup Recall Settings
+### V5.7.1 Startup Recall Settings
 
 ```typescript
 startupRecall: {
@@ -221,7 +211,7 @@ startupRecall: {
 }
 ```
 
-### V5.6.0 RAG Search Settings
+### V5.7.1 RAG Search Settings
 
 ```typescript
 ragSearch: {
@@ -266,14 +256,14 @@ localLLM: {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Hippocampus V5.7.0                       │
+│                    Hippocampus V5.7.1                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Session Start                                              │
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
-│  │ session_start                            │               │
+│  │ session_start (NEW!)                     │               │
 │  │  • Load core memories (importance ≥ 8)   │               │
 │  │  • Load recent 24h memories              │               │
 │  │  • LLM generates summary (if available)  │               │
@@ -284,9 +274,10 @@ localLLM: {
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
-│  │ before_agent_start                       │               │
+│  │ before_agent_start (ENHANCED!)           │               │
 │  │  • Vector search Top 100 memories        │               │
 │  │  • LLM reranks to Top 10 (if available)  │               │
+│  │  • Fallback: Top 20 by similarity        │               │
 │  │  • Inject into System Prompt             │               │
 │  └─────────────────────────────────────────┘               │
 │      │                                                      │
@@ -298,17 +289,16 @@ localLLM: {
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
 │  │ turn_end                                 │               │
-│  │  • Local LLM analyzes & saves memory     │               │
-│  │  • ⚡️ ASYNC METABOLISM TRIGGERED         │               │
-│  │  • Checks for conflicts -> Resolves      │               │
-│  │  • Old conflicting memories soft-deleted │               │
+│  │  • Local Ollama analyzes if worth saving │               │
+│  │  • Or falls back to regex matching       │               │
+│  │  • Saves to vector database              │               │
 │  └─────────────────────────────────────────┘               │
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
 │  │ session_shutdown                         │               │
-│  │  • Deep Clean (if requested)             │               │
 │  │  • Auto-consolidate fragment memories    │               │
+│  │  • Merge similar content                 │               │
 │  │  • Build associative links               │               │
 │  └─────────────────────────────────────────┘               │
 │                                                             │

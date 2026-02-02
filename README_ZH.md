@@ -5,7 +5,7 @@
 **给 AI 装个海马体，治好它的健忘症。**
 
 [![Pi Agent Extension](https://img.shields.io/badge/Pi%20Agent-Extension-blueviolet)](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
-[![Version](https://img.shields.io/badge/version-5.7.0-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
+[![Version](https://img.shields.io/badge/version-5.7.1-blue)](https://github.com/lebonbruce/pi-hippocampus/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [**English**](README.md) | [**简体中文**](README_ZH.md) | [**日本語**](README_JA.md)
@@ -16,7 +16,7 @@
 
 ## 为什么写这个？
 
-说真的，我用 AI Coding 工具（**[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)**）用了挺久，它们确实强，但有个毛病让我快疯了：**记性像金鱼**。
+说真的，我用 AI Coding 工具（Cursor、Windsurf、Claude）用了挺久，它们确实强，但有个毛病让我快疯了：**记性像金鱼**。
 
 关掉会话？忘了。换个项目？忘了。昨天刚教它的 API 坑点？忘了。
 
@@ -60,31 +60,6 @@
 因为它不只是搜索当前项目，还会根据相似度和重要性，把那些"刻骨铭心"的记忆提取出来。
 
 这感觉不像查数据库，更像是 AI 有了直觉。
-
-### 🌅 V5.6.0: 启动唤醒 & 智能检索
-
-**启动唤醒 (Startup Recall)** - 每次开启新会话，AI 会自动加载：
-- **核心记忆** (权重 ≥ 8)：你的身份、规则、偏好
-- **近期记忆** (最近 24 小时)：昨天干了什么
-
-**智能检索 (Smart RAG)** - 向量搜索 Top 100，再由本地 LLM 精选出最相关的 10 条。
-
-### 🧬 V5.7.0: 记忆新陈代谢 (实时代谢)
-
-**大脑不只是"增加"记忆，更在不断"更新"记忆。**
-
-- **实时冲突解决**：当学习到新规则（如"强制使用严格模式"）时，系统会立即在后台检查是否有冲突的旧规则。
-- **自动淘汰**：旧的、冲突的记忆会被标记为 `outdated` 并软删除。
-- **突触进化**：在新旧记忆之间建立连接，保留"为什么改变"的历史脉络。
-- **零延迟**：一切在后台异步进行，你完全感觉不到。
-
-### 🤫 零配置 & 静默模式 (Zero-Config)
-
-**无感才是最好的体验。**
-
-- **静默回退**：再也不会弹出烦人的 "Ollama disconnected" 提示。如果没有本地模型，它会悄悄切换到正则模式。
-- **自动检测**：一旦你启动 Ollama，它会立即感知并升级到智能模式。
-- **深度清理**：`consolidate_memories` 工具现在能自动识别你的意图（如"深度整理"），并调用本地 LLM 进行全库大清洗。
 
 ---
 
@@ -168,7 +143,7 @@ ollama serve
 
 重启 pi，如果看到这个提示就说明成功了：
 ```
-🧠 Hippocampus v5.7.0 (qwen2.5:7b)
+🧠 Hippocampus V5.7.1 Online (Local LLM: qwen2.5:7b)
 ```
 
 如果看到 `Regex Mode`，说明 Ollama 没检测到，但插件仍然可以正常工作。
@@ -237,24 +212,15 @@ localLLM: {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Hippocampus V5.7.0                       │
+│                    Hippocampus V5.7.1                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  用户输入                                                    │
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
-│  │ session_start (启动唤醒)                 │               │
-│  │  • 加载核心记忆 (权重 ≥ 8)               │               │
-│  │  • 加载最近 24h 记忆                     │               │
-│  │  • LLM 生成晨报摘要 (如果可用)            │               │
-│  └─────────────────────────────────────────┘               │
-│      │                                                      │
-│      ▼                                                      │
-│  ┌─────────────────────────────────────────┐               │
-│  │ before_agent_start (智能检索)            │               │
-│  │  • 向量搜索 Top 100 相关记忆             │               │
-│  │  • LLM 重排优选 Top 10 (Rerank)          │               │
+│  │ before_agent_start                       │               │
+│  │  • 向量搜索相关记忆                       │               │
 │  │  • 注入到 System Prompt                  │               │
 │  └─────────────────────────────────────────┘               │
 │      │                                                      │
@@ -265,18 +231,17 @@ localLLM: {
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
-│  │ turn_end (实时记忆代谢)                  │               │
+│  │ turn_end                                 │               │
 │  │  • 本地 Ollama 分析是否保存              │               │
-│  │  • ⚡️ 异步触发代谢机制                   │               │
-│  │  • 检查冲突 -> 解决冲突                   │               │
-│  │  • 旧记忆被软删除/标记过时                │               │
+│  │  • 或回退到正则匹配                       │               │
+│  │  • 保存到向量数据库                       │               │
 │  └─────────────────────────────────────────┘               │
 │      │                                                      │
 │      ▼                                                      │
 │  ┌─────────────────────────────────────────┐               │
-│  │ session_shutdown (深度整理)              │               │
-│  │  • 深度清洗 Deep Clean (如果请求)         │               │
+│  │ session_shutdown                         │               │
 │  │  • 自动整理碎片记忆                       │               │
+│  │  • 合并相似内容                          │               │
 │  │  • 建立关联链接                          │               │
 │  └─────────────────────────────────────────┘               │
 │                                                             │

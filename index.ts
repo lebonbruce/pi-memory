@@ -42,7 +42,7 @@ const CONFIG = {
     minImportance: 8,                 // 核心记忆的最小权重阈值
     maxTokens: 8000,                  // Token 硬限制（无 Ollama 时）
     maxMemories: 50,                  // 最大记忆条数（硬限制）
-    useLLMSummary: false,             // 有 Ollama 时生成压缩摘要（默认关闭，可手动开启）
+    useLLMSummary: true,              // 有 Ollama 时生成压缩摘要（默认关闭，可手动开启）
     summaryMaxTokens: 500,            // 摘要最大 Token 数
   },
   
@@ -50,13 +50,13 @@ const CONFIG = {
   ragSearch: {
     enabled: true,                    // 是否开启智能检索
     vectorSearchLimit: 100,           // 向量搜索数量（第一阶段）
-    rerankWithLLM: false,             // 使用本地 LLM 重排序（默认关闭，因为会导致每次对话延迟）
+    rerankWithLLM: true,              // 使用本地 LLM 重排序（默认关闭，因为会导致每次对话延迟）
     rerankOutputLimit: 10,            // 重排后输出数量
     hardLimitNoLLM: 20,               // 无 Ollama 时的硬截断数量
     includeGlobalCore: true,          // 是否强制包含全局核心记忆
     globalCoreMinImportance: 7,       // 全局核心记忆的最小重要性
     globalCoreLimit: 5,               // 全局核心记忆数量限制
-    queryEnhancement: false,          // 使用本地 LLM 增强短查询（默认关闭，会增加延迟）
+    queryEnhancement: true,           // 使用本地 LLM 增强短查询（默认关闭，会增加延迟）
     queryEnhancementThreshold: 20,    // 消息长度低于此值时触发查询增强
   },
   
@@ -325,7 +325,7 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.7.0";
+const STATUS_VERSION = "v5.7.1";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
@@ -2014,16 +2014,20 @@ export default function (pi: any) {
   // Tool 4: Consolidate
   pi.registerTool({
     name: "consolidate_memories",
-    description: "整理碎片记忆。列出最近的琐碎记忆，供 AI 总结并转化为规则。",
+    description: "触发后台记忆整理（代谢）。自动合并相似的碎片记忆，并提升高频记忆的重要性。这通常在会话结束时自动执行，但也可以手动触发。",
     parameters: Type.Object({}),
     async execute(id: string, params: any, signal: any, onUpdate: any, ctx: any) {
       const projectId = getProjectHash(ctx.cwd);
-      const items = await consolidateMemories(projectId);
-      if (items.length === 0) return { content: [{ type: "text", text: "Memory is clean. No fragments to consolidate." }] };
       
-      const list = items.map((i: any) => `- [${i.id}] (imp:${i.importance}, acc:${i.access_count}) ${i.content}`).join("\n");
+      // 直接执行后台整理，而不是列出碎片
+      const result = await performConsolidation(projectId);
+      
+      if (result.merged === 0 && result.promoted === 0) {
+        return { content: [{ type: "text", text: "Memory is clean. No consolidation needed right now." }] };
+      }
+      
       return { 
-        content: [{ type: "text", text: `Found ${items.length} memory fragments. Please analyze and consolidate into Global/Local Rules, then archive the fragments:\n${list}` }] 
+        content: [{ type: "text", text: `✓ Background Consolidation Complete:\n- Merged: ${result.merged} fragments\n- Promoted: ${result.promoted} important memories\n- New Links: ${result.newLinks} synapses created` }] 
       };
     }
   });
@@ -2445,7 +2449,7 @@ Ask yourself:
                 const llmResult = await analyzeWithLocalLLM(sessionBuffer);
                 
                 if (llmResult && llmResult.should_save && llmResult.content) {
-                  const newId = await saveMemory(llmResult.content, {
+                  await saveMemory(llmResult.content, {
                     type: llmResult.type,
                     importance: llmResult.importance,
                     scope: llmResult.scope,
@@ -2454,22 +2458,6 @@ Ask yourself:
                     source: 'local_llm'
                   });
                   saved = true;
-
-                  // V5.7.0 实时记忆代谢：每次生成重要记忆后，立即检查并清理过时记忆
-                  // 只对规则和高权重事实进行检查，避免过度消耗资源
-                  if (llmResult.type === 'rule' || llmResult.importance >= 7) {
-                    setTimeout(async () => {
-                      try {
-                        const metabolizedIds = await resolveMemoryConflicts(newId, llmResult.content, currentProjectId);
-                        if (metabolizedIds.length > 0) {
-                          console.log(`[Metabolism] Resolved ${metabolizedIds.length} conflicts for memory ${newId}`);
-                        }
-                      } catch (e) {
-                         // 静默失败，不打扰主流程
-                      }
-                    }, 0);
-                  }
-
                 } else if (llmResult && !llmResult.should_save) {
                   // 本地 LLM 明确说不需要保存
                   saved = true; // 跳过正则分析
@@ -2567,24 +2555,23 @@ Ask yourself:
           startupRecallReady = true;
           console.log(`[Hippocampus] Startup ready (raw format). Content length: ${startupRecallContent.length}`);
           
-          // 第二步：后台异步执行 LLM 摘要（不阻塞）
+          // 第二步：后台异步执行 LLM 摘要（延迟 5 秒执行，确保绝对不阻塞 UI 启动）
           if (ollamaOnline && CONFIG.startupRecall.useLLMSummary) {
-            // 使用 setImmediate 或 setTimeout 让出主线程
             setTimeout(async () => {
               try {
-                console.log(`[Hippocampus] Background LLM summary starting...`);
+                // console.log(`[Hippocampus] Background LLM summary starting...`); // 静默运行
                 const summary = await summarizeStartupMemoriesWithLLM(startupMemories);
                 if (summary) {
                   // 只有当 startupRecallContent 还没被消费时才替换
                   if (startupRecallContent && startupRecallContent.includes('STARTUP RECALL')) {
                     startupRecallContent = `\n### 🌅 STARTUP BRIEFING (LLM Summary)\n${summary}\n`;
-                    console.log(`[Hippocampus] Background LLM summary complete. New length: ${startupRecallContent.length}`);
+                    // console.log(`[Hippocampus] Background LLM summary complete.`);
                   }
                 }
               } catch (e) {
-                console.log(`[Hippocampus] Background LLM summary failed, using raw format`);
+                // 静默失败
               }
-            }, 0);
+            }, 5000); 
           }
         } else {
           // 没有记忆，直接标记完成
