@@ -12,5 +12,5 @@ dist/
 
 # Pi Specific
 .pi-hippocampus/
-memories.db
-memories.db-*
+hippocampus.db
+hippocampus.db-*
