@@ -195,35 +195,6 @@ const CONFIG = {
 
 > 💡 **Tip**: As your memory database grows, you can increase `maxMemories` to allow AI to retrieve more relevant memories. Be aware that more memories consume more tokens.
 
-### V5.7.1 Startup Recall Settings
-
-```typescript
-startupRecall: {
-  enabled: true,                    // Enable startup recall
-  lookbackHours: 24,                // How far back to look (hours)
-  minImportance: 8,                 // Min importance for core memories
-  maxTokens: 8000,                  // Token limit (no LLM fallback)
-  maxMemories: 50,                  // Max memories to load
-  useLLMSummary: true,              // Use LLM to generate summary
-  summaryMaxTokens: 500,            // Summary token limit
-}
-```
-
-### V5.7.1 RAG Search Settings
-
-```typescript
-ragSearch: {
-  enabled: true,                    // Enable smart RAG
-  vectorSearchLimit: 100,           // First-stage retrieval count
-  rerankWithLLM: true,              // Use LLM for reranking
-  rerankOutputLimit: 10,            // Final output count (with LLM)
-  hardLimitNoLLM: 20,               // Final output count (no LLM)
-  includeGlobalCore: true,          // Always include core memories
-  globalCoreMinImportance: 7,       // Core memory threshold
-  globalCoreLimit: 5,               // Max core memories to inject
-}
-```
-
 ### Local LLM Settings
 
 ```typescript

@@ -35,7 +35,7 @@
 
 我不想每次都当复读机。
 
-所以我给 **[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)** 写了这个插件。目的很简单：**让 AI 真正记住事儿**。
+所以我给我日常使用的 **[pi-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)** 写了这个插件。目的很简单：**让 AI 真正记住事儿**。
 
 不是那种把对话存成文件的傻办法（那全是噪音），而是像人脑一样——有过滤、有沉淀、有遗忘、有联想。
 
@@ -190,35 +190,6 @@ const CONFIG = {
   maxDistance: 1.2,                 // 向量搜索的最大距离阈值
   defaultDecayRate: 0.05,           // 记忆衰减速率
   // ...
-}
-```
-
-### V5.7.1 启动回忆配置
-
-```typescript
-startupRecall: {
-  enabled: true,                    // 开启启动回忆
-  lookbackHours: 24,                // 回顾过去多少小时
-  minImportance: 8,                 // 核心记忆最低重要性
-  maxTokens: 8000,                  // Token 限制
-  maxMemories: 50,                  // 最大加载记忆数
-  useLLMSummary: true,              // 使用 LLM 生成简报
-  summaryMaxTokens: 500,            // 简报最大 Token
-}
-```
-
-### V5.7.1 智能检索配置 (RAG)
-
-```typescript
-ragSearch: {
-  enabled: true,                    // 开启智能检索
-  vectorSearchLimit: 100,           // 初筛数量
-  rerankWithLLM: true,              // 使用 LLM 重排序
-  rerankOutputLimit: 10,            // 最终输出数量 (LLM)
-  hardLimitNoLLM: 20,               // 最终输出数量 (无 LLM)
-  includeGlobalCore: true,          // 总是包含核心记忆
-  globalCoreMinImportance: 7,       // 核心记忆阈值
-  globalCoreLimit: 5,               // 注入核心记忆数量
 }
 ```
 
