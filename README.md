@@ -105,9 +105,16 @@ echo Done! Restart pi to activate.
 
 ---
 
-## 🤖 Setting Up Local LLM (Recommended)
+## 🤖 Setting Up Local LLM (Strongly Recommended!)
 
-Local LLM makes memory decisions much smarter. If you skip this, the plugin falls back to regex—still works, just less intelligent.
+**It is strongly recommended to deploy a local model with at least 8B parameters (recommended `qwen2.5:7b-instruct` or `qwen3:8b`).**
+
+Why? Because the core features of V6.0 — **Muscle Memory** and **Holographic Search** — rely entirely on the reasoning capabilities of a local LLM to function.
+
+Without a local LLM:
+- ❌ **Muscle Memory won't work**: The rules you teach it cannot be transformed into "instincts".
+- ❌ **Associative Retrieval won't work**: When you say "bored", it won't think to check "plans".
+- ⚠️ **Regex Mode fallback**: Functionality is significantly reduced, limited to mechanical keyword matching.
 
 ### 1. Install Ollama
 
