@@ -326,7 +326,7 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.7.6";
+const STATUS_VERSION = "v5.7.7";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
@@ -1910,8 +1910,25 @@ export default function (pi: any) {
     }),
     async execute(id: string, params: any, signal: any, onUpdate: any, ctx: any) {
       try {
+        // Safety check: prevent saving system injection messages
+        if (params.content && (
+            params.content.includes('[Historical context:') || 
+            params.content.includes('Do not mimic this format')
+        )) {
+            return { 
+                content: [{ type: "text", text: "⚠️ Ignored system injection message." }], 
+                isError: false 
+            };
+        }
+
         const projectId = getProjectHash(ctx.cwd);
-        const memId = await saveMemory(params.content, {
+        
+        // Add timeout to prevent hanging (30s)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Memory operation timed out (30s)")), 30000)
+        );
+
+        const savePromise = saveMemory(params.content, {
           tags: params.tags,
           scope: params.scope || "local",
           projectId: projectId,
@@ -1920,12 +1937,15 @@ export default function (pi: any) {
           type: params.type as any,
           importance: params.importance
         });
+
+        const memId = await Promise.race([savePromise, timeoutPromise]);
         
         return { 
           content: [{ type: "text", text: `✓ Memory solidified (ID: ${memId})\nType: ${params.type||'fact'} | Importance: ${params.importance||1}` }], 
           details: { id: memId } 
         };
       } catch (error: any) {
+        console.error("[Hippocampus] save_memory error:", error);
         return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
       }
     }
@@ -2454,7 +2474,7 @@ Ask yourself:
     startupMemoriesCache = []; // 清空缓存
     startupSummaryDone = false;
     
-    const VERSION = "v5.7.6";
+    const VERSION = STATUS_VERSION;
     const projectId = getProjectHash(ctx.cwd);
     currentProjectId = projectId;
     
