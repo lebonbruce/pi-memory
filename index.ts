@@ -35,6 +35,14 @@ const CONFIG = {
     spreadDecay: 0.9,                 // 激活能量衰减极慢
   },
   
+  // V5.8.0 肌肉记忆配置 (Muscle Memory)
+  muscleMemory: {
+    enabled: true,
+    minImportance: 9,                 // 只有 9-10 分的红线规则才有资格进入肌肉记忆
+    maxExamples: 5,                   // 最多植入 5 条，避免挤占上下文
+    updateIntervalHours: 24,          // 每天重新评估一次肌肉记忆
+  },
+  
   // V5.7.1 启动唤醒配置 (Startup Recall) - ULTRA MODE (Safe for 32k Context)
   startupRecall: {
     enabled: true,
@@ -326,7 +334,7 @@ let currentLLMMode: string = 'Regex';  // 当前模式：模型名或 'Regex'
 let lastRecallCount: number = 0;  // 上次召回数量
 
 // 更新底部状态栏（合并显示）
-const STATUS_VERSION = "v5.7.7";
+const STATUS_VERSION = "v6.0.0";
 function updateStatusBar(ctx: any) {
   const modelDisplay = currentLLMMode === 'Regex' ? 'Regex' : currentLLMMode;
   const recallText = lastRecallCount >= 1000 ? '999+' : lastRecallCount.toString();
@@ -729,6 +737,16 @@ async function initDB() {
       role TEXT NOT NULL,
       content TEXT NOT NULL,
       timestamp INTEGER NOT NULL
+    );
+  `);
+
+  // 6. V5.8.0 肌肉记忆缓存表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS muscle_memories (
+      rule_id TEXT PRIMARY KEY,
+      example_user TEXT NOT NULL,
+      example_assistant TEXT NOT NULL,
+      created_at INTEGER NOT NULL
     );
   `);
 
@@ -1514,6 +1532,116 @@ ${memoryList}
   }
 }
 
+// V5.8.0 肌肉记忆生成器
+async function generateMuscleMemories(projectId: string): Promise<void> {
+  if (!CONFIG.localLLM.enabled || !CONFIG.muscleMemory.enabled) return;
+  
+  const database = await initDB();
+  const isAvailable = await checkOllamaAvailable();
+  if (!isAvailable) return;
+
+  // 1. 找出有资格成为"肌肉记忆"的顶级规则
+  // 条件：是 Rule，重要性 >= 9，且尚未生成过（或很久没更新）
+  const topRules = database.prepare(`
+    SELECT id, content FROM memories 
+    WHERE type = 'rule' 
+    AND importance >= ? 
+    AND status = 'active'
+    AND (scope = 'global' OR (scope = 'local' AND project_id = ?))
+    AND id NOT IN (SELECT rule_id FROM muscle_memories)
+    ORDER BY importance DESC, access_count DESC
+    LIMIT ?
+  `).all(CONFIG.muscleMemory.minImportance, projectId, CONFIG.muscleMemory.maxExamples);
+
+  if (topRules.length === 0) return;
+
+  console.log(`[Hippocampus] Generating muscle memory for ${topRules.length} rules...`);
+
+  for (const rule of topRules) {
+    try {
+      const prompt = `你是一个高级微调数据生成器。请将以下【核心规则】转化为一对【用户-助手】的对话范例 (Few-Shot Example)。
+这个范例将用于微调模型，使其产生"肌肉记忆"。
+
+## 核心规则
+"${rule.content}"
+
+## 要求
+1. 生成一个极简的 User 提问。
+2. 生成一个完美的 Assistant 回答（必须严格遵守规则，Show Don't Tell）。
+3. 如果规则是关于代码风格，Assistant 直接给出代码，不要废话。
+4. 范例必须短小精悍。
+
+## 输出格式 (JSON)
+{"user": "用户问题", "assistant": "助手回答"}
+`;
+
+      const controller = new AbortController();
+      // 给肌肉记忆生成更多时间 (60s)，因为这是一次性的一劳永逸工作
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
+      const response = await fetch(`${CONFIG.localLLM.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: CONFIG.localLLM.model,
+          prompt: prompt,
+          stream: false,
+          options: { temperature: 0.2, num_predict: 300 } // 稍微增加输出长度，保证范例完整
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const jsonStr = data.response.match(/\{[\s\S]*\}/)?.[0];
+      
+      if (jsonStr) {
+        const result = JSON.parse(jsonStr);
+        if (result.user && result.assistant) {
+          database.prepare(`
+            INSERT OR REPLACE INTO muscle_memories (rule_id, example_user, example_assistant, created_at)
+            VALUES (?, ?, ?, ?)
+          `).run(rule.id, result.user, result.assistant, Date.now());
+          console.log(`[Hippocampus] Muscle memory created for rule: ${rule.id}`);
+        }
+      }
+    } catch (e) {
+      console.error(`[Hippocampus] Failed to generate muscle memory for ${rule.id}:`, e);
+    }
+  }
+}
+
+// 获取肌肉记忆注入文本
+async function getMuscleMemoryInjection(projectId: string): Promise<string> {
+  if (!CONFIG.muscleMemory.enabled) return "";
+  
+  const database = await initDB();
+  const memories = database.prepare(`
+    SELECT m.content as rule_content, mm.example_user, mm.example_assistant 
+    FROM muscle_memories mm
+    JOIN memories m ON mm.rule_id = m.id
+    WHERE m.status = 'active'
+    AND (m.scope = 'global' OR (m.scope = 'local' AND m.project_id = ?))
+    ORDER BY m.importance DESC
+    LIMIT ?
+  `).all(projectId, CONFIG.muscleMemory.maxExamples);
+  
+  if (memories.length === 0) return "";
+  
+  let output = `\n### 🧬 MUSCLE MEMORY (Internalized Reflexes)\n`;
+  output += `These are your core instincts. Follow these patterns automatically without thinking.\n\n`;
+  
+  for (const m of memories) {
+    output += `[Rule: ${m.rule_content}]\n`;
+    output += `User: ${m.example_user}\n`;
+    output += `Assistant: ${m.example_assistant}\n\n`;
+  }
+  
+  return output;
+}
+
 // V5.7.0 后台代谢：用 LLM 总结记忆簇
 async function summarizeClusterWithLLM(memories: any[]): Promise<string | null> {
   if (!CONFIG.localLLM.enabled) return null;
@@ -1580,7 +1708,8 @@ async function enhanceQueryWithLLM(
       return `${role}: ${content}`;
     }).join('\n');
     
-    const prompt = `分析用户的最新消息，结合对话上下文，提取检索关键词。
+    const prompt = `作为海马体的"全息联想引擎"，你的任务是模拟人脑的神经网络，将用户的输入转化为多维度的记忆检索信号。
+不要局限于字面意思，必须进行"六维全息扫描" (6D Holographic Scan)。
 
 ## 对话历史
 ${historyText}
@@ -1588,13 +1717,16 @@ ${historyText}
 ## 用户最新消息
 ${userMessage}
 
-## 任务
-1. 理解用户真正想问/说的是什么
-2. 提取 3-5 个用于检索记忆库的关键词
-3. 关键词应该覆盖主题、技术栈、操作类型等
+## 任务：生成 5-8 个覆盖以下所有维度的检索短语
+1. **🎯 实体维 (Literal)**: 精准的关键词、专有名词、技术术语。
+2. **🕸️ 语义维 (Semantic)**: 同义词、相关概念、抽象主题。(如 "写代码" -> "架构设计")
+3. **🛤️ 时空维 (Temporal)**: 未来的计划、过去的经历、日程、待办。(如 "无聊" -> "周末计划/hobbies")
+4. **❤️ 情绪维 (Emotional)**: 用户的偏好、厌恶、习惯、红线规则。(如 "不喜欢" -> "User Preferences")
+5. **🔗 因果维 (Causal)**: 解决方案、前置条件、后果。(如 "报错" -> "历史修复方案")
+6. **🎭 情境维 (Episodic)**: 相关的项目背景、特定人名地名。(如 "那个山" -> "香山/Gansu")
 
-## 输出格式（直接输出，不要解释）
-关键词1 关键词2 关键词3`;
+## 输出格式（直接输出检索词，用空格分隔，不要解释）
+Query1 Query2 Query3 Query4 Query5 Query6`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时，保持快速
@@ -2239,14 +2371,12 @@ export default function (pi: any) {
     // 合并启动唤醒内容（如果有）
     let startupSection = "";
     if (startupRecallContent) {
-      // console.log(`[Hippocampus] Injecting startup recall`);
       startupSection = startupRecallContent;
-      // 注意：不要清空 startupRecallContent，因为我们希望它在这一轮作为 System Prompt 存在
-      // 如果需要在后续轮次中不再重复注入，可以在这里加逻辑。
-      // 但通常 System Prompt 是持久的。如果是 ephemeral 注入，则需要每次都加。
-      // 考虑到 Pi 的机制，System Prompt 可能会被保留。
-      // 为了安全起见，我们只在 sessionBuffer 长度较短时注入，或者每次都注入但依靠 summary 压缩。
-      // 这里的逻辑保持原样：每次 turn 都会触发 before_agent_start，每次都重新计算 systemPrompt。
+    }
+    
+    // V5.8.0 注入肌肉记忆
+    if (muscleMemoryContent) {
+      startupSection += muscleMemoryContent;
     }
 
     // V5.4 增强版潜意识 Prompt - 更强的记忆驱动
@@ -2341,6 +2471,15 @@ When user mentions another project:
 1. Detect project name: "在 polymarket 那边", "in the api project"
 2. Use \`search_memory\` with \`project: "project_name"\`
 3. Bring relevant context into current conversation
+
+---
+
+#### 🕵️ ACTIVE RETRIEVAL PROTOCOL (MANDATORY)
+
+1. **Analyze First**: For EVERY user input, extract entities/time/plans.
+2. **Search First**: If keywords exist, execute \`search_memory\` BEFORE responding.
+3. **Truth Priority**: Retrieved Memory > Context Inference.
+4. **Anti-Hallucination**: Never assume user plans based on current chat topic. Always verify.
 
 ---
 
@@ -2461,7 +2600,8 @@ Ask yourself:
   // V5.7.1 任务队列状态
   let startupMemoriesCache: any[] = [];
   let startupSummaryDone: boolean = false;
-  
+  let muscleMemoryContent: string = ""; // 肌肉记忆缓存
+
   // session_start
   pi.on("session_start", async (_event: any, ctx: any) => {
     sessionBuffer = [];
@@ -2470,8 +2610,9 @@ Ask yourself:
     lastRecallCount = 0;
     uiContext = ctx;
     startupRecallContent = "";
+    muscleMemoryContent = ""; // Reset
     startupRecallReady = false;
-    startupMemoriesCache = []; // 清空缓存
+    startupMemoriesCache = []; 
     startupSummaryDone = false;
     
     const VERSION = STATUS_VERSION;
@@ -2486,6 +2627,9 @@ Ask yourself:
       lastOllamaStatus = available;
       if (available) currentLLMMode = CONFIG.localLLM.model;
       else currentLLMMode = 'Regex';
+      
+      // V5.8.0: 异步触发肌肉记忆训练 (Fire-and-forget)
+      generateMuscleMemories(projectId).catch(e => console.error(e));
     } else {
       currentLLMMode = 'Regex';
     }
@@ -2494,12 +2638,19 @@ Ask yourself:
     // V5.7.1 极速启动：只加载 Raw Data，绝不阻塞 UI
     if (CONFIG.startupRecall.enabled) {
       try {
-        startupMemoriesCache = await getStartupMemories(projectId);
+        // 并行加载：启动记忆 + 肌肉记忆
+        const [startupMems, muscleText] = await Promise.all([
+          getStartupMemories(projectId),
+          getMuscleMemoryInjection(projectId)
+        ]);
+        
+        muscleMemoryContent = muscleText;
+        startupMemoriesCache = startupMems;
+
         if (startupMemoriesCache.length > 0) {
           lastRecallCount = startupMemoriesCache.length;
           updateStatusBar(ctx);
           
-          // 立即准备 Raw 格式，确保第一轮对话有内容可用
           const formatted = formatMemoriesForInjection(startupMemoriesCache, CONFIG.startupRecall.maxTokens);
           if (formatted) {
             startupRecallContent = `\n### 🌅 STARTUP RECALL (Core + Last ${CONFIG.startupRecall.lookbackHours}h)\n${formatted}\n`;
@@ -2510,8 +2661,7 @@ Ask yourself:
       }
     }
     
-    startupRecallReady = true; // 标记就绪
-    // console.log(`[Hippocampus] Session start complete (Non-blocking)`);
+    startupRecallReady = true; 
   });
 
   // session_shutdown: 自动整理
